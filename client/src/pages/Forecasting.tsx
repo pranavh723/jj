@@ -190,13 +190,28 @@ export default function Forecasting() {
           )}
 
           <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
-            <SelectTrigger className="w-32" data-testid="select-period">
+            <SelectTrigger className="w-40 transition-all duration-200 hover:scale-105" data-testid="select-period">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="24h">24 Hours</SelectItem>
-              <SelectItem value="48h">48 Hours</SelectItem>
-              <SelectItem value="7d">7 Days</SelectItem>
+              <SelectItem value="24h" className="hover:bg-primary/10 transition-colors">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <span>24 Hours</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="48h" className="hover:bg-secondary/10 transition-colors">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                  <span>48 Hours</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="7d" className="hover:bg-accent/10 transition-colors">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-accent rounded-full"></div>
+                  <span>7 Days</span>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -248,69 +263,78 @@ export default function Forecasting() {
           {/* Forecast Summary Cards */}
           {insights && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="card-hover">
+              <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-primary">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Zap className="text-primary w-5 h-5" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Zap className="text-primary w-6 h-6 group-hover:animate-pulse" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-foreground" data-testid="text-max-output">
+                      <p className="text-2xl font-bold text-foreground counter-animation" data-testid="text-max-output">
                         {insights.maxOutput} kW
                       </p>
                       <p className="text-sm text-muted-foreground">Peak Output</p>
-                      <p className="text-xs text-muted-foreground" data-testid="text-peak-time">
+                      <p className="text-xs text-primary/80 font-medium" data-testid="text-peak-time">
                         at {insights.peakTime}
                       </p>
                     </div>
                   </div>
+                  <div className="mt-3 w-full bg-primary/10 rounded-full h-2">
+                    <div className="bg-gradient-to-r from-primary to-primary/60 h-2 rounded-full animate-pulse" style={{width: '75%'}}></div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-hover">
+              <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-accent">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                      <Sun className="text-accent w-5 h-5" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-400/20 to-orange-400/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Sun className="text-yellow-500 w-6 h-6 group-hover:rotate-45 transition-transform duration-300" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-foreground" data-testid="text-total-generation">
                         {insights.totalGeneration} kWh
                       </p>
                       <p className="text-sm text-muted-foreground">Total Generation</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-accent/80 font-medium">
                         {selectedPeriod} forecast
                       </p>
                     </div>
                   </div>
+                  <div className="mt-3 w-full bg-yellow-100 dark:bg-yellow-900/20 rounded-full h-2">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-400 h-2 rounded-full animate-pulse" style={{width: '90%'}}></div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-hover">
+              <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-secondary">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="text-secondary w-5 h-5" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-400/20 to-emerald-400/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <TrendingUp className="text-green-500 w-6 h-6 group-hover:-translate-y-1 transition-transform duration-300" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-foreground" data-testid="text-avg-output">
                         {insights.avgOutput} kW
                       </p>
                       <p className="text-sm text-muted-foreground">Average Output</p>
-                      <p className="text-xs text-muted-foreground">Hourly average</p>
+                      <p className="text-xs text-secondary/80 font-medium">Hourly average</p>
                     </div>
+                  </div>
+                  <div className="mt-3 w-full bg-green-100 dark:bg-green-900/20 rounded-full h-2">
+                    <div className="bg-gradient-to-r from-green-400 to-emerald-400 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-hover">
+              <Card className={`group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 ${insights.lowPerformanceHours > 10 ? 'border-l-red-400' : 'border-l-blue-400'}`}>
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${insights.lowPerformanceHours > 10 ? 'from-red-400/20 to-red-400/10' : 'from-blue-400/20 to-blue-400/10'} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                       {insights.lowPerformanceHours > 10 ? (
-                        <TrendingDown className="text-muted-foreground w-5 h-5" />
+                        <TrendingDown className="text-red-500 w-6 h-6 group-hover:animate-bounce" />
                       ) : (
-                        <CloudSun className="text-muted-foreground w-5 h-5" />
+                        <CloudSun className="text-blue-500 w-6 h-6 group-hover:rotate-12 transition-transform duration-300" />
                       )}
                     </div>
                     <div>
@@ -318,8 +342,11 @@ export default function Forecasting() {
                         {insights.lowPerformanceHours}
                       </p>
                       <p className="text-sm text-muted-foreground">Low Output Hours</p>
-                      <p className="text-xs text-muted-foreground">Below 30% average</p>
+                      <p className={`text-xs font-medium ${insights.lowPerformanceHours > 10 ? 'text-red-500/80' : 'text-blue-500/80'}`}>Below 30% average</p>
                     </div>
+                  </div>
+                  <div className={`mt-3 w-full ${insights.lowPerformanceHours > 10 ? 'bg-red-100 dark:bg-red-900/20' : 'bg-blue-100 dark:bg-blue-900/20'} rounded-full h-2`}>
+                    <div className={`${insights.lowPerformanceHours > 10 ? 'bg-gradient-to-r from-red-400 to-red-500' : 'bg-gradient-to-r from-blue-400 to-blue-500'} h-2 rounded-full animate-pulse`} style={{width: `${Math.min(100, (insights.lowPerformanceHours / 24) * 100)}%`}}></div>
                   </div>
                 </CardContent>
               </Card>

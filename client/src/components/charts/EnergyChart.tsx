@@ -1,53 +1,98 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip, Area, AreaChart } from 'recharts';
 
 interface EnergyData {
   time: string;
   solar: number;
   grid: number;
+  temperature?: number;
+  cloudCover?: number;
 }
 
 interface EnergyChartProps {
   data: EnergyData[];
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-foreground mb-2">{`Time: ${label}`}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {`${entry.name}: ${entry.value.toFixed(2)} kW`}
+          </p>
+        ))}
+        {payload[0]?.payload?.temperature && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {`Temp: ${payload[0].payload.temperature.toFixed(1)}°C`}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
 export function EnergyChart({ data }: EnergyChartProps) {
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[350px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+            </linearGradient>
+            <linearGradient id="gridGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--secondary))" stopOpacity={0.6}/>
+              <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0.1}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
           <XAxis 
             dataKey="time" 
             stroke="hsl(var(--muted-foreground))"
-            fontSize={12}
+            fontSize={11}
+            axisLine={false}
+            tickLine={false}
           />
           <YAxis 
             stroke="hsl(var(--muted-foreground))"
-            fontSize={12}
+            fontSize={11}
+            axisLine={false}
+            tickLine={false}
             label={{ value: 'Power (kW)', angle: -90, position: 'insideLeft' }}
           />
-          <Legend />
-          <Line
+          <Tooltip content={<CustomTooltip />} />
+          <Legend 
+            iconType="line"
+            wrapperStyle={{ paddingTop: '20px' }}
+          />
+          <Area
             type="monotone"
             dataKey="solar"
             stroke="hsl(var(--primary))"
-            strokeWidth={2}
-            fill="hsl(var(--primary))"
-            fillOpacity={0.1}
+            strokeWidth={3}
+            fill="url(#solarGradient)"
             name="Solar Generation"
-            dot={{ fill: "hsl(var(--primary))", r: 4 }}
+            dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--primary))" }}
+            animationDuration={1500}
+            animationEasing="ease-out"
           />
-          <Line
+          <Area
             type="monotone"
             dataKey="grid"
             stroke="hsl(var(--secondary))"
             strokeWidth={2}
-            fill="hsl(var(--secondary))"
-            fillOpacity={0.1}
+            fill="url(#gridGradient)"
             name="Grid Consumption"
-            dot={{ fill: "hsl(var(--secondary))", r: 4 }}
+            dot={{ fill: "hsl(var(--secondary))", strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--secondary))" }}
+            animationDuration={1800}
+            animationEasing="ease-out"
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
