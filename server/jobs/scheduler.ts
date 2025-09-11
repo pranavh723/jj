@@ -50,12 +50,11 @@ export class SchedulerService {
   }
 
   private async getAllActiveHouseholds(): Promise<Household[]> {
-    // For now, get a sample of households since we don't have a specific "active" flag
-    // In production, you might want to add an "active" or "enabled" field
     try {
-      // This is a workaround since we don't have a direct method to get all households
-      // In a real implementation, you'd add a method to storage to get all households
-      return [] as Household[];
+      // Get all households - we'll need to fetch them by getting all user households
+      // This is a simplified approach - in production you'd optimize this
+      const households = await storage.getAllHouseholds();
+      return households;
     } catch (error) {
       console.error('Error getting households:', error);
       return [] as Household[];

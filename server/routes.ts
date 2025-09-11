@@ -17,7 +17,7 @@ interface AuthenticatedRequest extends Request {
   user: {
     userId: string;
     email: string;
-    name: string;
+    name?: string;
   };
 }
 
@@ -341,6 +341,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get leaderboard error:', error);
       res.status(500).json({ message: 'Failed to fetch leaderboard' });
+    }
+  });
+
+  // Manual scheduler triggers (for debugging/immediate data population)
+  app.post("/api/scheduler/run-hourly", authenticateToken, async (req, res) => {
+    try {
+      console.log('Manual hourly scheduler trigger by user:', (req as AuthenticatedRequest).user.email);
+      await schedulerService.runHourlyJob();
+      res.json({ message: 'Hourly job completed successfully' });
+    } catch (error) {
+      console.error('Manual hourly scheduler error:', error);
+      res.status(500).json({ message: 'Failed to run hourly job' });
     }
   });
 

@@ -12,7 +12,7 @@ import {
 interface Recommendation {
   id: string;
   deviceId: string;
-  deviceName: string;
+  deviceName?: string | null;
   startTs: string;
   endTs: string;
   reason: string;
@@ -33,7 +33,8 @@ const deviceIcons = {
   'default': Zap
 };
 
-function getDeviceIcon(deviceName: string) {
+function getDeviceIcon(deviceName: string | undefined | null) {
+  if (!deviceName) return deviceIcons.default;
   const key = deviceName.toLowerCase();
   for (const [name, icon] of Object.entries(deviceIcons)) {
     if (key.includes(name)) return icon;
@@ -72,7 +73,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-foreground" data-testid={`text-device-${recommendation.deviceId}`}>
-                {recommendation.deviceName}
+                {recommendation.deviceName || 'Unknown Device'}
               </h4>
               <Badge variant={badgeVariant as any} data-testid={`badge-recommendation-${recommendation.id}`}>
                 Best Time

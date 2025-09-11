@@ -9,6 +9,7 @@ const SALT_ROUNDS = 12;
 export interface JWTPayload {
   userId: string;
   email: string;
+  name?: string;
 }
 
 export class AuthService {
@@ -23,7 +24,8 @@ export class AuthService {
   generateToken(user: User): string {
     const payload: JWTPayload = {
       userId: user.id,
-      email: user.email
+      email: user.email,
+      name: user.name
     };
 
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });

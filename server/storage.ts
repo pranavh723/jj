@@ -18,6 +18,7 @@ export interface IStorage {
   // Households
   getHousehold(id: string): Promise<Household | undefined>;
   getHouseholdsByUserId(userId: string): Promise<Household[]>;
+  getAllHouseholds(): Promise<Household[]>;
   createHousehold(household: InsertHousehold): Promise<Household>;
   updateHousehold(id: string, household: Partial<Household>): Promise<Household>;
 
@@ -80,6 +81,10 @@ export class DatabaseStorage implements IStorage {
 
   async getHouseholdsByUserId(userId: string): Promise<Household[]> {
     return await db.select().from(households).where(eq(households.userId, userId));
+  }
+
+  async getAllHouseholds(): Promise<Household[]> {
+    return await db.select().from(households);
   }
 
   async createHousehold(household: InsertHousehold): Promise<Household> {

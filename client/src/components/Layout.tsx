@@ -67,8 +67,8 @@ export function Layout({ children }: LayoutProps) {
             {navItems.map((item) => (
               <li key={item.path}>
                 <Link href={item.path}>
-                  <a 
-                    className={`nav-item flex items-center space-x-3 px-4 py-3 rounded-lg ${
+                  <div 
+                    className={`nav-item flex items-center space-x-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
                       isActive(item.path) 
                         ? 'active bg-sidebar-primary text-sidebar-primary-foreground' 
                         : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -77,7 +77,7 @@ export function Layout({ children }: LayoutProps) {
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
-                  </a>
+                  </div>
                 </Link>
               </li>
             ))}
