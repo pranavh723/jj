@@ -67,7 +67,7 @@ export function Layout({ children }: LayoutProps) {
         {/* Logo Section */}
         <div className="p-6 border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-sidebar-primary rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-sidebar-primary rounded-lg flex items-center justify-center glow-effect">
               <Leaf className="text-sidebar-primary-foreground text-lg" />
             </div>
             <div>

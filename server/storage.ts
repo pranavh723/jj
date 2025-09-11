@@ -45,6 +45,7 @@ export interface IStorage {
   getRecommendations(householdId: string, startTime: Date, endTime: Date): Promise<Recommendation[]>;
   createRecommendation(recommendation: InsertRecommendation): Promise<Recommendation>;
   getLatestRecommendations(householdId: string): Promise<Recommendation[]>;
+  deleteRecommendationsByDeviceId(deviceId: string): Promise<void>;
 
   // Communities
   getCommunity(id: string): Promise<Community | undefined>;
@@ -117,6 +118,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDevice(id: string): Promise<void> {
+    // First delete all recommendations that reference this device
+    await this.deleteRecommendationsByDeviceId(id);
+    // Then delete the device itself
     await db.delete(devices).where(eq(devices.id, id));
   }
 
@@ -195,6 +199,10 @@ export class DatabaseStorage implements IStorage {
         lte(recommendations.startTs, tomorrow)
       ))
       .orderBy(recommendations.startTs);
+  }
+
+  async deleteRecommendationsByDeviceId(deviceId: string): Promise<void> {
+    await db.delete(recommendations).where(eq(recommendations.deviceId, deviceId));
   }
 
   async getCommunity(id: string): Promise<Community | undefined> {
