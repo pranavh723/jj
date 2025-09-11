@@ -79,11 +79,34 @@ export default function Analytics() {
     if (!dashboardData || !forecastData) {
       return {
         energyTrends: [],
-        costAnalysis: {},
-        environmentalImpact: {},
+        costAnalysis: {
+          daily: 0,
+          monthly: 0,
+          yearly: 0,
+          peakSavingHour: '12:00 PM',
+          avgHourlySaving: 0
+        },
+        environmentalImpact: {
+          dailyCO2: 0,
+          monthlyCO2: 0,
+          yearlyCO2: 0,
+          treesEquivalent: 0,
+          coalAvoided: 0
+        },
         deviceBreakdown: [],
-        efficiency: {},
-        predictions: {}
+        efficiency: {
+          overallEfficiency: 0,
+          solarUtilization: 0,
+          gridDependency: 50,
+          peakEfficiencyTime: '12:00 PM',
+          avgDailyGeneration: 0
+        },
+        predictions: {
+          nextWeekGeneration: 0,
+          potentialSavings: 0,
+          recommendedDeviceScheduling: [],
+          co2ReductionTarget: 0
+        }
       };
     }
 
