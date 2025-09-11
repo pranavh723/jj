@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
+import type { Household } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,12 +83,12 @@ export default function Devices() {
   const [selectedHousehold, setSelectedHousehold] = useState<string>('');
 
   // Fetch households
-  const { data: households = [] } = useQuery({
+  const { data: households = [] } = useQuery<Household[]>({
     queryKey: ['/api/households'],
   });
 
   // Set first household as default
-  React.useEffect(() => {
+  useEffect(() => {
     if (households.length > 0 && !selectedHousehold) {
       setSelectedHousehold(households[0].id);
     }
@@ -118,7 +119,7 @@ export default function Devices() {
   });
 
   // Update form household when selection changes
-  React.useEffect(() => {
+  useEffect(() => {
     form.setValue('householdId', selectedHousehold);
   }, [selectedHousehold, form]);
 

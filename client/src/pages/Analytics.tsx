@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { Household } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,12 +38,12 @@ export default function Analytics() {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch households
-  const { data: households = [] } = useQuery({
+  const { data: households = [] } = useQuery<Household[]>({
     queryKey: ['/api/households'],
   });
 
   // Set first household as default
-  React.useEffect(() => {
+  useEffect(() => {
     if (households.length > 0 && !selectedHousehold) {
       setSelectedHousehold(households[0].id);
     }
@@ -74,7 +75,7 @@ export default function Analytics() {
   });
 
   // Calculate analytics metrics
-  const analytics = React.useMemo(() => {
+  const analytics = useMemo(() => {
     if (!dashboardData || !forecastData) {
       return {
         energyTrends: [],

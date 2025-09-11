@@ -73,9 +73,9 @@ export class RecommendationService {
     const solarScores = this.calculateSolarScores(pvForecasts);
     
     // Find optimal time windows for the device
-    const minDuration = Math.ceil(device.minDurationHours);
-    const earliestHour = device.earliestHour;
-    const latestHour = device.latestHour;
+    const minDuration = Math.ceil(device.minDurationHours || 1);
+    const earliestHour = device.earliestHour ?? 6;
+    const latestHour = device.latestHour ?? 22;
 
     // Search for best time windows within device constraints
     for (let startHour = earliestHour; startHour <= latestHour - minDuration; startHour++) {
@@ -88,7 +88,7 @@ export class RecommendationService {
       let totalSolarKw = 0;
       
       for (let hour = startHour; hour < endHour; hour++) {
-        const hourIndex = hour - new Date().getHours();
+        const hourIndex = Math.max(0, hour - new Date().getHours());
         if (hourIndex >= 0 && hourIndex < solarScores.length) {
           totalScore += solarScores[hourIndex].score;
           totalSolarKw += solarScores[hourIndex].solarKw;
@@ -102,8 +102,11 @@ export class RecommendationService {
       const solarCoverageRatio = Math.min(1, avgSolarKw / device.typicalKwh);
       const gridAvoidance = device.typicalKwh * solarCoverageRatio;
       
-      const savings = gridAvoidance * household.tariffPerKwh;
-      const co2Avoided = gridAvoidance * household.co2FactorKgPerKwh;
+      const tariffPerKwh = household.tariffPerKwh ?? 5.0; // Default tariff
+      const co2FactorKgPerKwh = household.co2FactorKgPerKwh ?? 0.82; // Default CO2 factor
+      
+      const savings = gridAvoidance * tariffPerKwh;
+      const co2Avoided = gridAvoidance * co2FactorKgPerKwh;
 
       // Generate recommendation reason
       const reason = this.generateRecommendationReason(
@@ -111,8 +114,8 @@ export class RecommendationService {
         startHour,
         endHour,
         avgSolarKw,
-        savings,
-        co2Avoided
+        Math.round(savings * 100) / 100, // Round savings
+        Math.round(co2Avoided * 1000) / 1000 // Round CO2
       );
 
       timeWindows.push({

@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { weatherService } from "../services/weather";
 import { solarService } from "../services/solar";
 import { recommendationService } from "../services/recommendations";
+import type { Household } from "@shared/schema";
 
 export class SchedulerService {
   /**
@@ -48,16 +49,16 @@ export class SchedulerService {
     }
   }
 
-  private async getAllActiveHouseholds() {
+  private async getAllActiveHouseholds(): Promise<Household[]> {
     // For now, get a sample of households since we don't have a specific "active" flag
     // In production, you might want to add an "active" or "enabled" field
     try {
       // This is a workaround since we don't have a direct method to get all households
       // In a real implementation, you'd add a method to storage to get all households
-      return [];
+      return [] as Household[];
     } catch (error) {
       console.error('Error getting households:', error);
-      return [];
+      return [] as Household[];
     }
   }
 

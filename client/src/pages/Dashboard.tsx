@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import type { Household } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ export default function Dashboard() {
   const [currentHousehold, setCurrentHousehold] = useState<string | null>(null);
 
   // Fetch user's households
-  const { data: households = [] } = useQuery({
+  const { data: households = [] } = useQuery<Household[]>({
     queryKey: ['/api/households'],
     enabled: !!user,
   });

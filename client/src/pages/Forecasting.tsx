@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { Household } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,12 +76,12 @@ export default function Forecasting() {
   const [activeTab, setActiveTab] = useState('weather');
 
   // Fetch households
-  const { data: households = [] } = useQuery({
+  const { data: households = [] } = useQuery<Household[]>({
     queryKey: ['/api/households'],
   });
 
   // Set first household as default
-  React.useEffect(() => {
+  useEffect(() => {
     if (households.length > 0 && !selectedHousehold) {
       setSelectedHousehold(households[0].id);
     }
@@ -100,7 +101,7 @@ export default function Forecasting() {
   });
 
   // Process data for different time periods
-  const processedData = React.useMemo(() => {
+  const processedData = useMemo(() => {
     if (!forecastData) return { weather: [], pv: [], chartData: [] };
 
     const hoursToShow = selectedPeriod === '24h' ? 24 : selectedPeriod === '48h' ? 48 : 168;
@@ -125,7 +126,7 @@ export default function Forecasting() {
   }, [forecastData, selectedPeriod]);
 
   // Calculate forecast insights
-  const insights = React.useMemo(() => {
+  const insights = useMemo(() => {
     if (!processedData.pv.length) return null;
 
     const pvData = processedData.pv;

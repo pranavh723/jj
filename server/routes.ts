@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authService } from "./services/auth";
@@ -10,9 +10,26 @@ import {
   insertUserSchema, insertHouseholdSchema, insertDeviceSchema, 
   insertMeterReadingSchema 
 } from "@shared/schema";
+import { z } from "zod";
+
+// Extended Express Request interface
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    email: string;
+    name: string;
+  };
+}
+
+// Schema for user registration (includes password)
+const registerUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(1)
+});
 
 // Middleware for JWT authentication
-const authenticateToken = async (req: any, res: any, next: any) => {
+const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   const token = authService.extractTokenFromHeader(req.headers.authorization);
   
   if (!token) {
@@ -24,7 +41,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 
-  req.user = payload;
+  (req as AuthenticatedRequest).user = payload;
   next();
 };
 
@@ -32,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, password, name } = insertUserSchema.parse(req.body);
+      const { email, password, name } = registerUserSchema.parse(req.body);
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);

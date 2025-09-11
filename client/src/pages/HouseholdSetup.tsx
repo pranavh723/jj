@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
+import type { Household } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +37,7 @@ export default function HouseholdSetup() {
   const [activeTab, setActiveTab] = useState('existing');
 
   // Fetch existing households
-  const { data: households = [], isLoading } = useQuery({
+  const { data: households = [], isLoading } = useQuery<Household[]>({
     queryKey: ['/api/households'],
   });
 

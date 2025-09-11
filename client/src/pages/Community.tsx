@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export default function Community() {
   });
 
   // Set first community as default
-  React.useEffect(() => {
+  useEffect(() => {
     if (communities.length > 0 && !selectedCommunity) {
       setSelectedCommunity(communities[0].id);
     }
@@ -67,7 +67,7 @@ export default function Community() {
   };
 
   // Process leaderboard data
-  const processedLeaderboard = React.useMemo(() => {
+  const processedLeaderboard = useMemo(() => {
     if (!leaderboard.length) {
       // Mock data for demonstration
       return {

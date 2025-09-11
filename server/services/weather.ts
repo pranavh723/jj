@@ -1,4 +1,4 @@
-interface WeatherData {
+export interface WeatherData {
   temperature: number;
   cloudCover: number;
   windSpeed: number;
