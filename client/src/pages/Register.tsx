@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function Register() {
   const { register } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,6 +38,8 @@ export default function Register() {
         title: "Account created!",
         description: "Welcome to GreenGrid. Let's set up your household.",
       });
+      // Redirect to dashboard after successful registration
+      setLocation('/');
     } catch (error) {
       toast({
         title: "Registration failed",
