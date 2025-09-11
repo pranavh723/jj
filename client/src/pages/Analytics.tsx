@@ -308,7 +308,7 @@ export default function Analytics() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-efficiency-score">
-                      {analytics.efficiency.overallEfficiency.toFixed(0)}%
+                      {analytics.efficiency.overallEfficiency?.toFixed(0)}%
                     </p>
                     <p className="text-sm text-muted-foreground">System Efficiency</p>
                     <div className="flex items-center text-sm mt-1">
@@ -453,7 +453,7 @@ export default function Analytics() {
                     </div>
                     <div className="text-center">
                       <div className="text-3xl font-bold text-accent" data-testid="text-optimization-potential">
-                        {analytics.deviceBreakdown.reduce((sum, device) => sum + device.optimizationPotential, 0).toFixed(1)} kWh
+                        {analytics.deviceBreakdown.reduce((sum, device) => sum + device.optimizationPotential, 0)?.toFixed(1)} kWh
                       </div>
                       <div className="text-sm text-muted-foreground">Optimization Potential</div>
                     </div>
@@ -481,7 +481,7 @@ export default function Analytics() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Peak Generation</span>
                       <span className="font-medium" data-testid="text-peak-generation">
-                        {Math.max(...analytics.energyTrends.map(t => t.solar)).toFixed(1)} kW
+                        {Math.max(...analytics.energyTrends.map(t => t.solar))?.toFixed(1)} kW
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -495,7 +495,7 @@ export default function Analytics() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Capacity Factor</span>
                       <span className="font-medium" data-testid="text-capacity-factor">
-                        {((analytics.efficiency.avgDailyGeneration / 24) / 5.0 * 100).toFixed(1)}%
+                        {((analytics.efficiency.avgDailyGeneration / 24) / 5.0 * 100)?.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -558,7 +558,7 @@ export default function Analytics() {
                         <h4 className="font-medium text-green-800 dark:text-green-200">Cost Optimization Opportunities</h4>
                       </div>
                       <p className="text-sm text-green-700 dark:text-green-300 mb-2">
-                        With better device scheduling, you could save an additional ₹{(analytics.predictions.potentialSavings - analytics.costAnalysis.monthly).toFixed(0)} per month.
+                        With better device scheduling, you could save an additional ₹{(analytics.predictions.potentialSavings - analytics.costAnalysis.monthly)?.toFixed(0)} per month.
                       </p>
                       <p className="text-xs text-green-600 dark:text-green-400">
                         Peak savings window: 11:00 AM - 3:00 PM
@@ -579,7 +579,7 @@ export default function Analytics() {
                           </div>
                           <div className="flex justify-between font-medium border-t pt-2">
                             <span>Net monthly benefit</span>
-                            <span className="text-green-600">₹{(analytics.costAnalysis.monthly - 500).toFixed(0)}</span>
+                            <span className="text-green-600">₹{(analytics.costAnalysis.monthly - 500)?.toFixed(0)}</span>
                           </div>
                         </div>
                       </div>
@@ -598,7 +598,7 @@ export default function Analytics() {
                           <div className="flex justify-between font-medium border-t pt-2">
                             <span>Payback period</span>
                             <span className="text-primary">
-                              {(350000 / analytics.costAnalysis.yearly).toFixed(1)} years
+                              {(350000 / analytics.costAnalysis.yearly)?.toFixed(1)} years
                             </span>
                           </div>
                         </div>
@@ -665,13 +665,13 @@ export default function Analytics() {
                         </div>
                         <div>
                           <div className="text-lg font-bold text-green-600" data-testid="text-car-miles-equivalent">
-                            {(analytics.environmentalImpact.yearlyCO2 * 2.31).toFixed(0)} km
+                            {(analytics.environmentalImpact.yearlyCO2 * 2.31)?.toFixed(0)} km
                           </div>
                           <div className="text-xs text-green-700 dark:text-green-300">Car driving equivalent avoided</div>
                         </div>
                         <div>
                           <div className="text-lg font-bold text-green-600" data-testid="text-home-power-days">
-                            {(analytics.environmentalImpact.yearlyCO2 / 0.82 / 10).toFixed(0)} days
+                            {(analytics.environmentalImpact.yearlyCO2 / 0.82 / 10)?.toFixed(0)} days
                           </div>
                           <div className="text-xs text-green-700 dark:text-green-300">Avg. home powered cleanly</div>
                         </div>
@@ -689,7 +689,7 @@ export default function Analytics() {
                           ></div>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {((analytics.environmentalImpact.yearlyCO2 / 2000) * 100).toFixed(1)}% of average household carbon footprint offset
+                          {((analytics.environmentalImpact.yearlyCO2 / 2000) * 100)?.toFixed(1)}% of average household carbon footprint offset
                         </p>
                       </div>
 
@@ -764,11 +764,11 @@ export default function Analytics() {
                           </div>
                           <div className="text-right">
                             <div className="font-medium" data-testid={`text-device-cost-${index}`}>
-                              ₹{device.costImpact.toFixed(0)}/cycle
+                              ₹{device.costImpact?.toFixed(0)}/cycle
                             </div>
                             {device.optimizationPotential > 0 && (
                               <div className="text-sm text-green-600" data-testid={`text-optimization-${index}`}>
-                                Save {device.optimizationPotential.toFixed(1)} kWh
+                                Save {device.optimizationPotential?.toFixed(1)} kWh
                               </div>
                             )}
                           </div>
@@ -792,7 +792,7 @@ export default function Analytics() {
                           </div>
                           <div>
                             <div className="text-lg font-bold text-blue-600" data-testid="text-total-optimization-potential">
-                              {analytics.deviceBreakdown.reduce((sum, device) => sum + device.optimizationPotential, 0).toFixed(1)} kWh
+                              {analytics.deviceBreakdown.reduce((sum, device) => sum + device.optimizationPotential, 0)?.toFixed(1)} kWh
                             </div>
                             <div className="text-xs text-blue-700 dark:text-blue-300">Optimization Potential</div>
                           </div>
