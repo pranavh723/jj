@@ -52,8 +52,8 @@ export default function HouseholdSetup() {
     resolver: zodResolver(householdSchema),
     defaultValues: {
       name: '',
-      latitude: 19.0760, // Mumbai coordinates
-      longitude: 72.8777,
+      latitude: undefined,
+      longitude: undefined,
       pvKw: 5.0,
       tilt: 30,
       azimuth: 180,

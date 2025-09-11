@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import type { Household } from '@shared/schema';
 import { 
   Home, 
   Zap, 
@@ -24,6 +26,20 @@ export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const [isDark, setIsDark] = useState(false);
+
+  // Fetch user's households to display location
+  const { data: households = [] } = useQuery<Household[]>({
+    queryKey: ['/api/households'],
+    enabled: !!user,
+  });
+
+  // Get location display from first household
+  const getLocationDisplay = () => {
+    if (households.length === 0) return 'Setup Location';
+    const household = households[0];
+    if (!household.latitude || !household.longitude) return 'Setup Location';
+    return `${household.latitude.toFixed(2)}°, ${household.longitude.toFixed(2)}°`;
+  };
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -128,7 +144,7 @@ export function Layout({ children }: LayoutProps) {
                   day: 'numeric' 
                 })}
               </span>{' '}
-              • <span className="text-primary font-medium">Mumbai, India</span>
+              • <span className="text-primary font-medium" data-testid="text-location">{getLocationDisplay()}</span>
             </p>
           </div>
 
