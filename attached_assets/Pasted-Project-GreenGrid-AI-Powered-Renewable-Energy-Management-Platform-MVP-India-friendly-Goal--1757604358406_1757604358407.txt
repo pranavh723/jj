@@ -1,0 +1,132 @@
+Project: GreenGrid – AI‑Powered Renewable Energy Management Platform (MVP, India‑friendly)
+
+Goal:
+Build a production‑ready full‑stack app on Replit that predicts renewable availability (solar-first), recommends appliance schedules, and visualizes energy, cost savings, and CO₂ avoided at household and community levels. Use free‑tier defaults so it runs without paid keys.
+
+Platform & Stack:
+- Frontend: React + Vite + TypeScript + MUI (responsive, light/dark).
+- Backend: Python FastAPI, Pydantic, async SQLAlchemy, Alembic.
+- Database: PostgreSQL via DATABASE_URL (Replit Secrets).
+- Jobs: Scheduled deployments for hourly forecast + daily recommendations.
+- Auth: Simple email/password (JWT) with modular swap path later.
+
+India‑relevant Data Sources (design in adapters):
+- Weather (default): Open‑Meteo (no key, hourly forecast).
+- Weather (optional): OpenWeather One Call (if OPENWEATHER_API_KEY present); Tomorrow.io (if TOMORROW_API_KEY present); WeatherAPI (if WEATHERAPI_KEY present).
+- Solar modeling: pvlib (default) for local PV computation; optional NREL PVWatts v8 via NREL_API_KEY.
+- Carbon: built‑in Scope 2 location‑based with configurable grid EF; optional external CO₂ APIs: Climatiq (CLIMATIQ_API_KEY) or Carbon Interface (CARBON_INTERFACE_KEY).
+- India grid/open data (future optional connectors): NOAR/NOAR+ and POSOCO endpoints (configure placeholders and adapter stubs for later enablement).
+
+Environment & Secrets (.env.example; read from env only):
+- DATABASE_URL
+- SECRET_KEY
+- OPENWEATHER_API_KEY (optional)
+- TOMORROW_API_KEY (optional)
+- WEATHERAPI_KEY (optional)
+- NREL_API_KEY (optional)
+- CLIMATIQ_API_KEY (optional)
+- CARBON_INTERFACE_KEY (optional)
+- TELEGRAM_BOT_TOKEN (optional)
+
+Repository Layout:
+- /backend: FastAPI app, models/, schemas/, services/, adapters/, clients/, jobs/, alembic/
+- /frontend: Vite React app, pages/, components/, hooks/, services/api.ts
+- /infra: .replit, replit.nix, README.md, scripts/
+- Tests: basic unit tests (recommendation logic) + API smoke tests.
+
+Database Schema (Alembic migrations):
+- users(id, email, password_hash, created_at)
+- households(id, user_id, lat, lon, pv_kw, tilt, azimuth, tariff_currency, tariff_per_kwh, co2_factor_kg_per_kwh, use_pvwatts BOOLEAN default false)
+- devices(id, household_id, name, typical_kwh, flexible BOOLEAN, min_duration_hours, earliest_hour, latest_hour)
+- weather_hourly(id, household_id, ts, temp_c, clouds_pct, wind_mps, ghi_proxy)
+- pv_forecast_hourly(id, household_id, ts, ac_kw)
+- meter_readings(id, household_id, ts, grid_kwh, solar_kwh)
+- recommendations(id, household_id, device_id, created_ts, start_ts, end_ts, reason)
+- communities(id, name, city)
+- community_members(id, community_id, user_id)
+- leaderboard_snapshots(id, community_id, period_start, period_end, user_id, kwh_saved, co2_avoided_kg, points)
+
+Adapters (clean interfaces; simple dependency injection):
+- Weather:
+  - Open‑Meteo adapter (default, no key): hourly forecast by lat/lon.
+  - OpenWeather adapter (optional).
+  - Tomorrow.io adapter (optional).
+  - WeatherAPI adapter (optional).
+- Solar:
+  - pvlib_engine (default).
+  - pvwatts_client (optional, enabled only if NREL_API_KEY and household.use_pvwatts=true).
+- Carbon:
+  - Local Scope 2 calculator using household.co2_factor_kg_per_kwh.
+  - Optional Climatiq client (energy/electricity endpoints).
+  - Optional Carbon Interface client.
+
+APIs (FastAPI):
+- POST /api/auth/register, POST /api/auth/login (JWT)
+- POST /api/households, GET /api/households/:id
+- POST /api/devices, GET /api/devices?household_id=
+- GET /api/dashboard?household_id= (daily/weekly: renewable share, kWh shifted, cost & CO₂ saved)
+- GET /api/forecasts?household_id= (merged weather + pv)
+- POST /api/meter-readings
+- POST /api/recommendations/generate?household_id= (ad‑hoc generation)
+- GET /api/community/:id/leaderboard
+
+Forecasting & Recommendations:
+- Weather pipeline (default): Open‑Meteo → persist hourly weather_hourly.
+- PV pipeline (default): pvlib using household pv_kw, tilt, azimuth, default losses=0.86; compute ac_kw → pv_forecast_hourly.
+- Optional PV pipeline: PVWatts if enabled per household and key present.
+- “Best time” algorithm:
+  - Compute renewable_score per hour from pv_forecast_hourly.
+  - For each flexible device, choose start windows maximizing cumulative score within [earliest_hour, latest_hour] and min_duration_hours.
+  - Produce top 1–3 windows with textual reasons.
+- Carbon & Savings:
+  - CO₂ avoided = shifted_kWh × co2_factor_kg_per_kwh (editable per household; seed India default).
+  - Cost savings = shifted_kWh × tariff_per_kwh.
+
+Scheduled Jobs (idempotent; Scheduled Deployments):
+- Hourly job: fetch weather → compute PV → upsert forecasts for all active households.
+- Daily job (07:00 local): generate recommendations for all households; persist; if TELEGRAM_BOT_TOKEN set, send a summary message.
+- Add retries and structured logging.
+
+Frontend (React):
+- Pages: Login/Register, Household Setup (location/PV/tariff/CO₂ factor), Devices, Dashboard, Community Leaderboard.
+- Dashboard:
+  - Charts for renewable vs grid, kWh shifted, cost & CO₂ savings.
+  - “Today’s best windows” list with device icons.
+- Maps (visualization):
+  - Leaflet by default with OpenStreetMap tiles for free usage.
+  - Optional Mapbox toggle if token is provided.
+- Community:
+  - Leaderboard by % renewable, points, CO₂ avoided; monthly snapshot view.
+- Client SDK: TypeScript API client with typed responses and token handling.
+
+India Open Data (stubs for later integration):
+- Create adapters/noar_client.py and posoco_client.py with interface methods and TODOs for authenticated fetch & normalization.
+- Add feature flags: USE_NOAR=false, USE_POSOCO=false (document in README).
+
+Developer Experience & Ops:
+- replit.nix configured for FastAPI, pvlib, SQLAlchemy, Alembic, Vite, and jobs environments.
+- .replit to run backend and frontend concurrently in dev; production deployment commands defined.
+- README with:
+  - Secrets setup
+  - DB migration and seed script
+  - How to enable optional adapters (OpenWeather, Tomorrow.io, WeatherAPI, PVWatts, Climatiq, Carbon Interface, Mapbox)
+  - How to configure two scheduled jobs
+- Tests: recommendation algorithm unit test; basic API smoke tests.
+
+Acceptance Criteria:
+- Runs in Replit with one click; migrations apply; seeded data appears.
+- Hourly job writes weather_hourly and pv_forecast_hourly.
+- Daily job creates recommendations and (if Telegram configured) sends a summary.
+- Dashboard shows daily/weekly metrics and today’s best windows.
+- Community leaderboard renders from seeded snapshots.
+
+Tasks:
+1) Scaffold monorepo and environment configs.
+2) Implement DB models + Alembic migrations + seed script.
+3) Auth and core REST endpoints.
+4) Weather adapters (Open‑Meteo default; others optional) and PV pipeline (pvlib default; PVWatts optional).
+5) Hourly and daily jobs with scheduling.
+6) React UI, charts, and Leaflet map; optional Mapbox toggle.
+7) README and tests; logging and minimal error handling.
+
+Start by generating an implementation plan, then build step‑by‑step, validating after each major step. Use clean interfaces, strong typing, and avoid hardcoded credentials.
