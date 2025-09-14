@@ -787,6 +787,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Main Battery Status API - Single house battery system
+  app.get("/api/main-battery", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const userId = user.userId;
+      
+      // Get the latest battery log to determine current status
+      const latestLog = await storage.getLatestBatteryStatus(userId);
+      
+      // If no logs exist, create a realistic main battery status
+      if (!latestLog) {
+        const defaultStatus = {
+          stateOfCharge: 75,
+          depthOfDischarge: 25,
+          cycleCount: 450,
+          health: 'good',
+          voltage: 12.6,
+          temperature: 25,
+          lastUpdated: new Date().toISOString(),
+          status: 'normal',
+          recommendations: ['Monitor battery levels regularly', 'Charge during solar peak hours (10AM-3PM)']
+        };
+        return res.json(defaultStatus);
+      }
+      
+      // Calculate health status based on cycles and DoD
+      let health: 'excellent' | 'good' | 'fair' | 'poor' = 'excellent';
+      let status: 'normal' | 'warning' | 'critical' = 'normal';
+      
+      if (latestLog.cycleCount > 2000 || latestLog.dodPercent > 80) {
+        health = 'poor';
+        status = 'critical';
+      } else if (latestLog.cycleCount > 1500 || latestLog.dodPercent > 60) {
+        health = 'fair';
+        status = 'warning';
+      } else if (latestLog.cycleCount > 1000 || latestLog.dodPercent > 40) {
+        health = 'good';
+        status = 'normal';
+      }
+      
+      // Generate intelligent recommendations
+      const recommendations: string[] = [];
+      if (latestLog.dodPercent > 80) {
+        recommendations.push('Reduce depth of discharge below 80% to extend battery life');
+      }
+      if (latestLog.socPercent < 20) {
+        recommendations.push('Charge battery above 20% to prevent deep discharge damage');
+      }
+      if (latestLog.cycleCount > 1500) {
+        recommendations.push('Consider battery replacement planning - high cycle count detected');
+      }
+      if (latestLog.socPercent > 95) {
+        recommendations.push('Avoid keeping battery at full charge for extended periods');
+      }
+      if (recommendations.length === 0) {
+        recommendations.push('Battery performance is optimal - continue current usage patterns');
+      }
+      
+      // Calculate estimated voltage based on SoC (typical 12V lead-acid curve)
+      const voltage = 11.8 + (latestLog.socPercent / 100) * 1.4;
+      
+      // Simulate temperature (20-30°C range)
+      const temperature = 20 + Math.random() * 10;
+      
+      const mainBatteryStatus = {
+        stateOfCharge: Math.round(latestLog.socPercent * 10) / 10,
+        depthOfDischarge: Math.round(latestLog.dodPercent * 10) / 10,
+        cycleCount: latestLog.cycleCount,
+        health,
+        voltage: Math.round(voltage * 100) / 100,
+        temperature: Math.round(temperature * 10) / 10,
+        lastUpdated: latestLog.timestamp.toISOString(),
+        status,
+        recommendations,
+        alert: latestLog.alert || null
+      };
+      
+      res.json(mainBatteryStatus);
+    } catch (error) {
+      console.error('Get main battery error:', error);
+      res.status(500).json({ message: 'Failed to fetch main battery status' });
+    }
+  });
+
   // Schedule Management Routes
   app.get("/api/schedule", authenticateToken, async (req, res) => {
     try {
@@ -894,6 +978,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get grid data error:', error);
       res.status(500).json({ message: 'Failed to fetch grid data' });
+    }
+  });
+
+  // Grid Tariff API - For electricity cost trends and analytics
+  app.get("/api/grid-tariff", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      
+      // Generate tariff trend data for the last 90 days for analytics
+      const tariffData = [];
+      const currentDate = new Date();
+      
+      for (let i = 89; i >= 0; i--) {
+        const date = new Date(currentDate);
+        date.setDate(currentDate.getDate() - i);
+        
+        // Simulate realistic time-of-use tariff structure
+        const hour = date.getHours();
+        const dayOfWeek = date.getDay(); // 0 = Sunday
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        // Base tariff rates (INR per kWh)
+        let peakRate, offPeakRate, standardRate;
+        
+        // Seasonal variations (summer higher rates)
+        const month = date.getMonth();
+        const isSummer = month >= 4 && month <= 8; // May to September
+        const seasonalMultiplier = isSummer ? 1.15 : 0.95;
+        
+        if (isWeekend) {
+          peakRate = 6.8 * seasonalMultiplier;
+          offPeakRate = 4.2 * seasonalMultiplier;
+          standardRate = 5.5 * seasonalMultiplier;
+        } else {
+          peakRate = 8.5 * seasonalMultiplier;
+          offPeakRate = 4.8 * seasonalMultiplier;
+          standardRate = 6.2 * seasonalMultiplier;
+        }
+        
+        // Time-of-use classification
+        let tariffType, currentRate;
+        if (hour >= 18 && hour <= 22) {
+          // Peak hours (6 PM to 10 PM)
+          tariffType = 'peak';
+          currentRate = peakRate;
+        } else if (hour >= 22 || hour <= 6) {
+          // Off-peak hours (10 PM to 6 AM)
+          tariffType = 'off-peak';
+          currentRate = offPeakRate;
+        } else {
+          // Standard hours
+          tariffType = 'standard';
+          currentRate = standardRate;
+        }
+        
+        // Add some random variation to make it realistic
+        const variation = 0.9 + Math.random() * 0.2; // ±10% variation
+        currentRate = currentRate * variation;
+        
+        // Historical average for comparison
+        const historicalAverage = 5.8;
+        
+        tariffData.push({
+          timestamp: date.toISOString(),
+          date: date.toISOString().split('T')[0],
+          hour: hour,
+          tariffType: tariffType,
+          rate: Math.round(currentRate * 100) / 100,
+          currency: 'INR',
+          unit: 'per_kWh',
+          isWeekend: isWeekend,
+          isSummer: isSummer,
+          historicalAverage: historicalAverage,
+          percentageChange: Math.round(((currentRate - historicalAverage) / historicalAverage) * 100 * 100) / 100
+        });
+      }
+      
+      // Calculate summary statistics
+      const rates = tariffData.map(d => d.rate);
+      const averageRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+      const minRate = Math.min(...rates);
+      const maxRate = Math.max(...rates);
+      
+      // Recent 7-day trend
+      const recent7Days = tariffData.slice(-7 * 24);
+      const recentAverage = recent7Days.reduce((sum, d) => sum + d.rate, 0) / recent7Days.length;
+      const previous7Days = tariffData.slice(-14 * 24, -7 * 24);
+      const previousAverage = previous7Days.reduce((sum, d) => sum + d.rate, 0) / previous7Days.length;
+      const weeklyTrend = ((recentAverage - previousAverage) / previousAverage) * 100;
+      
+      // Peak demand periods for forecasting
+      const peakPeriods = [
+        { start: '18:00', end: '22:00', type: 'evening_peak', description: 'Evening residential peak' },
+        { start: '09:00', end: '12:00', type: 'morning_peak', description: 'Morning commercial peak' },
+        { start: '13:00', end: '16:00', type: 'afternoon_peak', description: 'Afternoon industrial peak' }
+      ];
+      
+      const response = {
+        tariffData: tariffData,
+        summary: {
+          averageRate: Math.round(averageRate * 100) / 100,
+          minRate: Math.round(minRate * 100) / 100,
+          maxRate: Math.round(maxRate * 100) / 100,
+          currency: 'INR',
+          unit: 'per_kWh',
+          dataRange: {
+            from: tariffData[0].date,
+            to: tariffData[tariffData.length - 1].date,
+            totalDays: 90
+          },
+          weeklyTrend: Math.round(weeklyTrend * 100) / 100
+        },
+        peakPeriods: peakPeriods,
+        forecast: {
+          nextWeekProjection: Math.round((recentAverage * 1.02) * 100) / 100, // 2% increase projection
+          seasonalTrend: (currentDate.getMonth() >= 4 && currentDate.getMonth() <= 8) ? 'increasing' : 'stable',
+          recommendations: [
+            'Shift heavy appliance usage to off-peak hours (10 PM - 6 AM)',
+            'Use battery storage during peak hours (6 PM - 10 PM)',
+            'Monitor weekend vs weekday rate differences'
+          ]
+        }
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Get grid tariff error:', error);
+      res.status(500).json({ message: 'Failed to fetch grid tariff data' });
     }
   });
 

@@ -21,7 +21,8 @@ import {
   RefreshCw,
   Zap,
   Clock,
-  Settings
+  Settings,
+  Database
 } from 'lucide-react';
 import { SimulationToggle } from '@/components/SimulationToggle';
 import { apiRequest } from '@/lib/queryClient';
@@ -104,7 +105,19 @@ export default function Battery() {
     enabled: !!user,
   });
 
-  // Fetch battery logs
+  // Fetch main battery status (live data)
+  const { 
+    data: mainBatteryStatus, 
+    isLoading: isLoadingMainBattery,
+    error: mainBatteryError,
+    refetch: refetchMainBattery 
+  } = useQuery<any>({
+    queryKey: ['/api/main-battery'],
+    enabled: !!user,
+    refetchInterval: 30000, // Refresh every 30 seconds for live data
+  });
+
+  // Fetch battery logs (for manual entry history)
   const { 
     data: batteryLogsRaw = [], 
     isLoading: isLoadingLogs,
@@ -127,7 +140,7 @@ export default function Battery() {
   });
 
   // Sort battery logs by timestamp desc to ensure latest entry is first
-  const batteryLogs = batteryLogsRaw.sort((a, b) => 
+  const batteryLogs = [...batteryLogsRaw].sort((a, b) => 
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
@@ -142,6 +155,7 @@ export default function Battery() {
         description: "Battery status has been recorded and analyzed.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/battery'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/main-battery'] });
       form.reset();
     },
     onError: (error: any) => {
@@ -218,6 +232,18 @@ export default function Battery() {
   };
 
   const getBatteryStatus = (): BatteryStatus => {
+    // Use live main battery data if available
+    if (mainBatteryStatus) {
+      return {
+        currentSoC: mainBatteryStatus.stateOfCharge,
+        currentDoD: mainBatteryStatus.depthOfDischarge,
+        totalCycles: mainBatteryStatus.cycleCount,
+        healthStatus: mainBatteryStatus.health,
+        lastAlert: mainBatteryStatus.alert || undefined,
+      };
+    }
+
+    // Fallback to battery logs if main battery data is not available
     if (batteryLogs.length === 0) {
       return {
         currentSoC: 0,
@@ -323,13 +349,14 @@ export default function Battery() {
             onClick={() => {
               refetchHouseholds();
               refetchLogs();
+              refetchMainBattery();
             }}
             variant="outline"
             size="sm"
-            disabled={isLoadingLogs || isLoadingHouseholds}
+            disabled={isLoadingLogs || isLoadingHouseholds || isLoadingMainBattery}
             data-testid="button-refresh-data"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoadingLogs || isLoadingHouseholds) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoadingLogs || isLoadingHouseholds || isLoadingMainBattery) ? 'animate-spin' : ''}`} />
             Refresh Data
           </Button>
         </div>
@@ -348,6 +375,27 @@ export default function Battery() {
                 variant="outline" 
                 size="sm"
                 data-testid="button-retry-households"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {mainBatteryError && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center py-4">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+              <p className="text-destructive font-medium">Failed to load main battery status</p>
+              <p className="text-sm text-muted-foreground mb-4">{mainBatteryError.message}</p>
+              <Button 
+                onClick={() => refetchMainBattery()} 
+                variant="outline" 
+                size="sm"
+                data-testid="button-retry-main-battery"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Retry
@@ -449,9 +497,27 @@ export default function Battery() {
       {/* Battery Visual Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <BatteryIcon className="w-5 h-5" />
-            <span>Battery Status Overview</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <BatteryIcon className="w-5 h-5" />
+              <span>Battery Status Overview</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              {mainBatteryStatus ? (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <Activity className="w-3 h-3 mr-1" />
+                  Live Data
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  <Database className="w-3 h-3 mr-1" />
+                  Manual Logs
+                </Badge>
+              )}
+              {isLoadingMainBattery && (
+                <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

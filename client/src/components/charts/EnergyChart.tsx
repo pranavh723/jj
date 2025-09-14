@@ -40,12 +40,12 @@ export function EnergyChart({ data }: EnergyChartProps) {
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
+              <stop offset="5%" stopColor="var(--neon-blue)" stopOpacity={0.8}/>
+              <stop offset="95%" stopColor="var(--neon-blue)" stopOpacity={0.1}/>
             </linearGradient>
             <linearGradient id="gridGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10B981" stopOpacity={0.6}/>
-              <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+              <stop offset="5%" stopColor="var(--neon-orange)" stopOpacity={0.6}/>
+              <stop offset="95%" stopColor="var(--neon-orange)" stopOpacity={0.1}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
@@ -71,7 +71,7 @@ export function EnergyChart({ data }: EnergyChartProps) {
           <Area
             type="monotone"
             dataKey="solar"
-            stroke="#3B82F6"
+            stroke="var(--neon-blue)"
             strokeWidth={3}
             fill="url(#solarGradient)"
             name="Solar Generation"
@@ -83,7 +83,7 @@ export function EnergyChart({ data }: EnergyChartProps) {
           <Area
             type="monotone"
             dataKey="grid"
-            stroke="#10B981"
+            stroke="var(--neon-orange)"
             strokeWidth={2}
             fill="url(#gridGradient)"
             name="Grid Consumption"

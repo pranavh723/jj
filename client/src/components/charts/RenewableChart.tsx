@@ -16,12 +16,12 @@ export function RenewableChart({ solarPercentage, gridPercentage }: RenewableCha
     {
       name: 'Solar Energy',
       value: solarPercentage,
-      color: '#F59E0B'
+      color: 'var(--neon-blue)'
     },
     {
       name: 'Grid Energy',
       value: gridPercentage,
-      color: '#EF4444'
+      color: 'var(--neon-orange)'
     }
   ];
 
@@ -56,7 +56,6 @@ export function RenewableChart({ solarPercentage, gridPercentage }: RenewableCha
             labelLine={false}
             label={CustomLabel}
             outerRadius={80}
-            fill="#8884d8"
             dataKey="value"
           >
             {data.map((entry, index) => (

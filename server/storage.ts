@@ -283,13 +283,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(applianceReadings.timestamp);
   }
 
-  async getApplianceAnomalies(userId: string): Promise<ApplianceAnomaly[]> {
+  async getApplianceAnomalies(userId: string): Promise<any[]> {
     return await db.select({
       id: applianceAnomalies.id,
       applianceReadingId: applianceAnomalies.applianceReadingId,
       timestamp: applianceAnomalies.timestamp,
       anomalyType: applianceAnomalies.anomalyType,
-      severity: applianceAnomalies.severity
+      severity: applianceAnomalies.severity,
+      applianceReading: {
+        id: applianceReadings.id,
+        userId: applianceReadings.userId,
+        applianceName: applianceReadings.applianceName,
+        timestamp: applianceReadings.timestamp,
+        powerWatts: applianceReadings.powerWatts
+      }
     })
     .from(applianceAnomalies)
     .innerJoin(applianceReadings, eq(applianceAnomalies.applianceReadingId, applianceReadings.id))
