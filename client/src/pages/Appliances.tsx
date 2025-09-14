@@ -391,7 +391,7 @@ export default function Appliances() {
                       {getSeverityIcon(anomaly.severity)}
                       <div>
                         <p className="font-medium">
-                          {anomaly.applianceReading.applianceName}
+                          {anomaly.applianceReading?.applianceName || 'Unknown Appliance'}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {anomaly.anomalyType}
@@ -401,7 +401,7 @@ export default function Appliances() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-muted-foreground">
-                      {anomaly.applianceReading.powerWatts}W
+                      {anomaly.applianceReading?.powerWatts || 0}W
                     </span>
                     <Badge className={getSeverityColor(anomaly.severity)}>
                       {anomaly.severity}

@@ -747,7 +747,7 @@ export default function Battery() {
                           {schedule.startTime} - {schedule.endTime} | Target: {schedule.targetSoC}% | Max DoD: {schedule.maxDoD}%
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {schedule.daysOfWeek.join(', ')}
+                          {schedule.daysOfWeek?.join(', ') || 'No days specified'}
                         </p>
                       </div>
                     </div>
