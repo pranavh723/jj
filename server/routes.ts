@@ -648,64 +648,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Energy Marketplace Routes
+  // Energy Marketplace Routes - Enhanced with detailed P2P trade data
   app.get("/api/marketplace", authenticateToken, async (req, res) => {
     try {
       // Get all households for marketplace simulation
       const households = await storage.getAllHouseholds();
       
-      // Generate mock energy data and trades
-      const trades = await storage.getEnergyTrades();
-      const simulatedTrades = [];
+      // Generate realistic seller/buyer names for P2P trading
+      const mockNames = [
+        'Raj Sharma', 'Priya Patel', 'Amit Kumar', 'Neha Singh', 'Vikram Malhotra',
+        'Sneha Gupta', 'Rohit Verma', 'Anjali Mehta', 'Suresh Reddy', 'Kavita Jain',
+        'Manish Agarwal', 'Deepika Roy', 'Arjun Nair', 'Pooja Sinha', 'Ravi Iyer',
+        'Sita Rao', 'Kiran Shah', 'Meera Bhatt', 'Arun Das', 'Shweta Mishra'
+      ];
       
-      // Simulate marketplace trades
-      for (let i = 0; i < Math.min(10, households.length); i++) {
-        const seller = households[Math.floor(Math.random() * households.length)];
-        const buyer = households[Math.floor(Math.random() * households.length)];
+      // Generate dynamic marketplace trades with all required fields
+      const currentTrades = [];
+      const numTrades = Math.min(25, Math.max(10, households.length * 2));
+      
+      for (let i = 0; i < numTrades; i++) {
+        const kWh = Math.round((Math.random() * 8 + 1) * 10) / 10; // 1.0 - 9.0 kWh
+        const basePrice = 6 + Math.random() * 4; // ₹6-10 per kWh
+        const totalPrice = Math.round(kWh * basePrice * 100) / 100;
         
-        if (seller.id !== buyer.id) {
-          const energyAmount = Math.random() * 5 + 1; // 1-6 kWh
-          simulatedTrades.push({
-            sellerId: seller.id,
-            buyerId: buyer.id,
-            energyTradedKwh: energyAmount,
-            timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
-          });
+        const trade = {
+          trade_id: `TXN${Date.now()}-${i.toString().padStart(3, '0')}`,
+          seller_name: mockNames[Math.floor(Math.random() * mockNames.length)],
+          buyer_name: mockNames[Math.floor(Math.random() * mockNames.length)],
+          kWh: kWh,
+          price: totalPrice,
+          timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000) // Last 24 hours
+        };
+        
+        // Ensure seller and buyer are different
+        if (trade.seller_name !== trade.buyer_name) {
+          currentTrades.push(trade);
         }
       }
       
-      // Calculate leaderboard of top sellers
+      // Sort trades by timestamp (newest first)
+      currentTrades.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      // Calculate seller statistics for leaderboard
       const sellerStats = new Map();
-      [...trades, ...simulatedTrades].forEach(trade => {
-        const sellerId = 'sellerId' in trade ? trade.sellerId : trade.sellerHouseholdId;
-        const current = sellerStats.get(sellerId) || 0;
-        sellerStats.set(sellerId, current + trade.energyTradedKwh);
+      currentTrades.forEach(trade => {
+        const current = sellerStats.get(trade.seller_name) || { totalKwh: 0, totalEarnings: 0 };
+        current.totalKwh += trade.kWh;
+        current.totalEarnings += trade.price;
+        sellerStats.set(trade.seller_name, current);
       });
       
       const topSellers = Array.from(sellerStats.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+        .sort((a, b) => b[1].totalKwh - a[1].totalKwh)
+        .slice(0, 8)
+        .map((seller, index) => ({
+          rank: index + 1,
+          seller_name: seller[0],
+          energyTradedKwh: Math.round(seller[1].totalKwh * 10) / 10,
+          totalEarnings: Math.round(seller[1].totalEarnings * 100) / 100
+        }));
       
-      // Anonymize sensitive data before sending
-      const anonymizedTrades = [...trades, ...simulatedTrades].slice(0, 20).map((trade, index) => ({
-        id: `trade_${index}`,
-        energyTradedKwh: trade.energyTradedKwh,
-        timestamp: trade.timestamp
-      }));
-
-      const anonymizedTopSellers = topSellers.map((seller, index) => ({
-        rank: index + 1,
-        energyTradedKwh: seller[1]
-      }));
-
+      // Calculate marketplace metrics
+      const totalEnergyTraded = currentTrades.reduce((sum, trade) => sum + trade.kWh, 0);
+      const totalValue = currentTrades.reduce((sum, trade) => sum + trade.price, 0);
+      const averagePrice = totalValue / totalEnergyTraded || 0;
+      const renewablePercentage = 78 + Math.random() * 17; // 78-95% renewable
+      
       res.json({
-        trades: anonymizedTrades,
-        topSellers: anonymizedTopSellers,
-        renewablePercentage: 75 + Math.random() * 20 // 75-95%
+        trades: currentTrades.slice(0, 15), // Most recent 15 trades
+        topSellers: topSellers,
+        metrics: {
+          totalEnergyTraded: Math.round(totalEnergyTraded * 10) / 10,
+          totalValue: Math.round(totalValue * 100) / 100,
+          averagePrice: Math.round(averagePrice * 100) / 100,
+          activeTraders: new Set([...currentTrades.map(t => t.seller_name), ...currentTrades.map(t => t.buyer_name)]).size,
+          renewablePercentage: Math.round(renewablePercentage * 10) / 10
+        }
       });
     } catch (error) {
       console.error('Get marketplace error:', error);
       res.status(500).json({ message: 'Failed to fetch marketplace data' });
+    }
+  });
+
+  // Grid Consumption & Tariff API - Live utility grid data
+  app.get("/api/grid", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const households = await storage.getHouseholdsByUserId(user.userId);
+      
+      if (households.length === 0) {
+        return res.status(404).json({ message: 'No household found' });
+      }
+      
+      const household = households[0]; // Use first household for grid data
+      const currentHour = new Date().getHours();
+      const currentMinute = new Date().getMinutes();
+      
+      // Simulate realistic grid consumption patterns
+      // Peak hours: 6-9 AM and 6-10 PM (higher consumption)
+      // Off-peak: 10 PM - 6 AM (lower consumption)
+      // Normal: rest of the day
+      let baseConsumption = 2.5; // Base 2.5 kW
+      let tariffRate = household.tariffPerKwh || 5.0; // Default ₹5/kWh
+      let gridStatus = 'stable';
+      
+      // Time-based consumption simulation
+      if ((currentHour >= 6 && currentHour <= 9) || (currentHour >= 18 && currentHour <= 22)) {
+        // Peak hours - higher consumption
+        baseConsumption = 3.5 + Math.random() * 2; // 3.5-5.5 kW
+        tariffRate = tariffRate * 1.3; // 30% higher during peak
+        gridStatus = 'peak_demand';
+      } else if (currentHour >= 22 || currentHour <= 6) {
+        // Off-peak hours - lower consumption
+        baseConsumption = 1.2 + Math.random() * 0.8; // 1.2-2.0 kW
+        tariffRate = tariffRate * 0.8; // 20% lower during off-peak
+        gridStatus = 'off_peak';
+      } else {
+        // Normal hours
+        baseConsumption = 2.0 + Math.random() * 1.5; // 2.0-3.5 kW
+        gridStatus = 'normal';
+      }
+      
+      // Add some realistic fluctuation (every few seconds)
+      const fluctuation = (Math.sin(Date.now() / 10000) * 0.3) + (Math.random() - 0.5) * 0.4;
+      const currentConsumption = Math.max(0.1, baseConsumption + fluctuation);
+      
+      // Calculate costs
+      const currentCostPerHour = currentConsumption * tariffRate;
+      const dailyEstimatedCost = currentCostPerHour * 24;
+      
+      // Generate historical data for the last 24 hours (hourly)
+      const historicalData = [];
+      for (let i = 23; i >= 0; i--) {
+        const pastHour = new Date(Date.now() - i * 60 * 60 * 1000);
+        const hour = pastHour.getHours();
+        
+        let pastConsumption = 2.5;
+        let pastTariff = household.tariffPerKwh || 5.0;
+        
+        if ((hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 22)) {
+          pastConsumption = 3.5 + Math.random() * 2;
+          pastTariff = pastTariff * 1.3;
+        } else if (hour >= 22 || hour <= 6) {
+          pastConsumption = 1.2 + Math.random() * 0.8;
+          pastTariff = pastTariff * 0.8;
+        } else {
+          pastConsumption = 2.0 + Math.random() * 1.5;
+        }
+        
+        historicalData.push({
+          timestamp: pastHour.toISOString(),
+          consumption_kW: Math.round(pastConsumption * 100) / 100,
+          tariff_inr_per_kWh: Math.round(pastTariff * 100) / 100,
+          cost_inr_per_hour: Math.round(pastConsumption * pastTariff * 100) / 100
+        });
+      }
+      
+      // Calculate renewable vs grid percentage
+      const currentTime = new Date();
+      const solarActive = currentHour >= 6 && currentHour <= 18;
+      let renewablePercentage = 0;
+      
+      if (solarActive) {
+        // During solar hours, calculate based on solar generation potential
+        const solarFactor = Math.sin(((currentHour - 6) / 12) * Math.PI);
+        renewablePercentage = Math.min(95, Math.max(10, solarFactor * 75 + Math.random() * 20));
+      } else {
+        // Night time - mostly grid power, some battery
+        renewablePercentage = 5 + Math.random() * 15; // 5-20% from battery
+      }
+      
+      const gridPercentage = 100 - renewablePercentage;
+      
+      // Grid health and recommendations
+      const recommendations = [];
+      if (currentHour >= 18 && currentHour <= 22) {
+        recommendations.push('Peak demand period - consider deferring high-power appliances');
+      } else if (currentHour >= 10 && currentHour <= 16) {
+        recommendations.push('Optimal time for high-power appliances - abundant solar energy');
+      }
+      
+      if (currentConsumption > 4) {
+        recommendations.push('High grid consumption detected - check running appliances');
+      }
+      
+      const gridData = {
+        current: {
+          timestamp: currentTime.toISOString(),
+          consumption_kW: Math.round(currentConsumption * 100) / 100,
+          tariff_inr_per_kWh: Math.round(tariffRate * 100) / 100,
+          cost_inr_per_hour: Math.round(currentCostPerHour * 100) / 100,
+          status: gridStatus
+        },
+        energy_mix: {
+          renewable_percentage: Math.round(renewablePercentage * 10) / 10,
+          grid_percentage: Math.round(gridPercentage * 10) / 10,
+          solar_active: solarActive
+        },
+        costs: {
+          current_hourly_cost: Math.round(currentCostPerHour * 100) / 100,
+          daily_estimated_cost: Math.round(dailyEstimatedCost * 100) / 100,
+          monthly_estimated_cost: Math.round(dailyEstimatedCost * 30 * 100) / 100
+        },
+        historical_24h: historicalData,
+        tariff_schedule: {
+          peak_hours: '06:00-09:00, 18:00-22:00',
+          peak_rate: Math.round(tariffRate * 1.3 * 100) / 100,
+          normal_rate: Math.round(tariffRate * 100) / 100,
+          off_peak_rate: Math.round(tariffRate * 0.8 * 100) / 100
+        },
+        recommendations: recommendations.length > 0 ? recommendations : ['Grid consumption is optimal']
+      };
+      
+      res.json(gridData);
+    } catch (error) {
+      console.error('Get grid data error:', error);
+      res.status(500).json({ message: 'Failed to fetch grid data' });
     }
   });
 
