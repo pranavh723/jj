@@ -8,7 +8,8 @@ import { recommendationService } from "./services/recommendations";
 import { schedulerService } from "./jobs/scheduler";
 import { 
   insertUserSchema, insertHouseholdSchema, insertDeviceSchema, 
-  insertMeterReadingSchema 
+  insertMeterReadingSchema, insertApplianceReadingSchema, insertApplianceAnomalySchema,
+  insertHouseholdEnergySchema, insertEnergyTradeSchema, insertBatteryLogSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -341,6 +342,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get leaderboard error:', error);
       res.status(500).json({ message: 'Failed to fetch leaderboard' });
+    }
+  });
+
+  // ===== NEW FEATURE ROUTES =====
+  
+  // Appliance Anomaly Detection Routes
+  app.post("/api/readings", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const data = insertApplianceReadingSchema.parse({
+        ...req.body,
+        userId: user.userId
+      });
+      
+      const reading = await storage.createApplianceReading(data);
+      
+      // Check for anomalies using moving average and standard deviation
+      const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentReadings = await storage.getApplianceReadings(user.userId, last24Hours, new Date());
+      
+      const applianceReadings = recentReadings.filter(r => r.applianceName === data.applianceName);
+      if (applianceReadings.length > 5) {
+        const powers = applianceReadings.map(r => r.powerWatts);
+        const mean = powers.reduce((sum, p) => sum + p, 0) / powers.length;
+        const variance = powers.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / powers.length;
+        const stdDev = Math.sqrt(variance);
+        
+        const threshold = mean + 2 * stdDev;
+        
+        if (data.powerWatts > threshold) {
+          let severity = 'warning';
+          if (data.powerWatts > mean + 3 * stdDev) severity = 'critical';
+          
+          await storage.createApplianceAnomaly({
+            applianceReadingId: reading.id,
+            timestamp: new Date(),
+            anomalyType: 'power_spike',
+            severity
+          });
+        }
+      }
+      
+      res.json(reading);
+    } catch (error) {
+      console.error('Create appliance reading error:', error);
+      res.status(400).json({ message: 'Failed to create appliance reading' });
+    }
+  });
+
+  app.get("/api/anomalies", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const anomalies = await storage.getApplianceAnomalies(user.userId);
+      res.json(anomalies);
+    } catch (error) {
+      console.error('Get anomalies error:', error);
+      res.status(500).json({ message: 'Failed to fetch anomalies' });
+    }
+  });
+
+  // Energy Marketplace Routes
+  app.get("/api/marketplace", authenticateToken, async (req, res) => {
+    try {
+      // Get all households for marketplace simulation
+      const households = await storage.getAllHouseholds();
+      
+      // Generate mock energy data and trades
+      const trades = await storage.getEnergyTrades();
+      const simulatedTrades = [];
+      
+      // Simulate marketplace trades
+      for (let i = 0; i < Math.min(10, households.length); i++) {
+        const seller = households[Math.floor(Math.random() * households.length)];
+        const buyer = households[Math.floor(Math.random() * households.length)];
+        
+        if (seller.id !== buyer.id) {
+          const energyAmount = Math.random() * 5 + 1; // 1-6 kWh
+          simulatedTrades.push({
+            sellerId: seller.id,
+            buyerId: buyer.id,
+            energyTradedKwh: energyAmount,
+            timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
+          });
+        }
+      }
+      
+      // Calculate leaderboard of top sellers
+      const sellerStats = new Map();
+      [...trades, ...simulatedTrades].forEach(trade => {
+        const current = sellerStats.get(trade.sellerId) || 0;
+        sellerStats.set(trade.sellerId, current + trade.energyTradedKwh);
+      });
+      
+      const topSellers = Array.from(sellerStats.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      // Anonymize sensitive data before sending
+      const anonymizedTrades = [...trades, ...simulatedTrades].slice(0, 20).map((trade, index) => ({
+        id: `trade_${index}`,
+        energyTradedKwh: trade.energyTradedKwh,
+        timestamp: trade.timestamp
+      }));
+
+      const anonymizedTopSellers = topSellers.map((seller, index) => ({
+        rank: index + 1,
+        energyTradedKwh: seller[1]
+      }));
+
+      res.json({
+        trades: anonymizedTrades,
+        topSellers: anonymizedTopSellers,
+        renewablePercentage: 75 + Math.random() * 20 // 75-95%
+      });
+    } catch (error) {
+      console.error('Get marketplace error:', error);
+      res.status(500).json({ message: 'Failed to fetch marketplace data' });
+    }
+  });
+
+  // Battery Management Routes
+  app.get("/api/battery", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const households = await storage.getHouseholdsByUserId(user.userId);
+      
+      if (households.length === 0) {
+        return res.json({ status: null, logs: [], recommendation: null });
+      }
+      
+      const household = households[0];
+      const latestStatus = await storage.getLatestBatteryStatus(household.id);
+      
+      // Generate mock battery logs if none exist
+      const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      let logs = await storage.getBatteryLogs(household.id, last7Days, new Date());
+      
+      if (logs.length === 0) {
+        // Generate mock data
+        const mockLogs = [];
+        for (let i = 6; i >= 0; i--) {
+          const timestamp = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+          const socPercent = 20 + Math.random() * 60; // 20-80%
+          const dodPercent = 100 - socPercent;
+          const cycleCount = 150 + Math.floor(Math.random() * 50);
+          
+          mockLogs.push({
+            householdId: household.id,
+            timestamp,
+            socPercent,
+            dodPercent,
+            cycleCount,
+            alert: dodPercent > 80 ? 'High depth of discharge - consider charging' : null
+          });
+        }
+        
+        // Save mock data
+        for (const log of mockLogs) {
+          await storage.createBatteryLog(log);
+        }
+        
+        logs = await storage.getBatteryLogs(household.id, last7Days, new Date());
+      }
+      
+      const currentHour = new Date().getHours();
+      let recommendation = "Monitor battery levels regularly.";
+      
+      if (latestStatus && latestStatus.socPercent < 30) {
+        recommendation = "Charge during 10AM–3PM (solar peak) for optimal performance.";
+      } else if (currentHour >= 10 && currentHour <= 15) {
+        recommendation = "Great time to charge! Solar generation is at peak.";
+      }
+      
+      res.json({
+        status: latestStatus,
+        logs: logs.slice(-7), // Last 7 entries
+        recommendation
+      });
+    } catch (error) {
+      console.error('Get battery error:', error);
+      res.status(500).json({ message: 'Failed to fetch battery data' });
     }
   });
 

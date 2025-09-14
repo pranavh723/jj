@@ -1,10 +1,14 @@
 import { 
   users, households, devices, weatherHourly, pvForecastHourly, 
   meterReadings, recommendations, communities, communityMembers, leaderboardSnapshots,
+  applianceReadings, applianceAnomalies, householdEnergy, energyTrades, batteryLogs,
   type User, type InsertUser, type Household, type InsertHousehold,
   type Device, type InsertDevice, type WeatherHourly, type PvForecastHourly,
   type MeterReading, type InsertMeterReading, type Recommendation, type InsertRecommendation,
-  type Community, type InsertCommunity, type CommunityMember, type LeaderboardSnapshot
+  type Community, type InsertCommunity, type CommunityMember, type LeaderboardSnapshot,
+  type ApplianceReading, type InsertApplianceReading, type ApplianceAnomaly, type InsertApplianceAnomaly,
+  type HouseholdEnergy, type InsertHouseholdEnergy, type EnergyTrade, type InsertEnergyTrade,
+  type BatteryLog, type InsertBatteryLog
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -57,6 +61,23 @@ export interface IStorage {
   // Leaderboard
   getLeaderboardSnapshots(communityId: string, periodStart: Date, periodEnd: Date): Promise<LeaderboardSnapshot[]>;
   createLeaderboardSnapshot(snapshot: Omit<LeaderboardSnapshot, 'id'>): Promise<LeaderboardSnapshot>;
+
+  // Appliance Anomaly Detection
+  createApplianceReading(reading: InsertApplianceReading): Promise<ApplianceReading>;
+  getApplianceReadings(userId: string, startTime: Date, endTime: Date): Promise<ApplianceReading[]>;
+  getApplianceAnomalies(userId: string): Promise<ApplianceAnomaly[]>;
+  createApplianceAnomaly(anomaly: InsertApplianceAnomaly): Promise<ApplianceAnomaly>;
+
+  // Energy Marketplace
+  createHouseholdEnergy(energy: InsertHouseholdEnergy): Promise<HouseholdEnergy>;
+  getHouseholdEnergy(householdId: string, startTime: Date, endTime: Date): Promise<HouseholdEnergy[]>;
+  createEnergyTrade(trade: InsertEnergyTrade): Promise<EnergyTrade>;
+  getEnergyTrades(): Promise<EnergyTrade[]>;
+
+  // Battery Management
+  createBatteryLog(log: InsertBatteryLog): Promise<BatteryLog>;
+  getBatteryLogs(householdId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]>;
+  getLatestBatteryStatus(householdId: string): Promise<BatteryLog | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -244,6 +265,91 @@ export class DatabaseStorage implements IStorage {
   async createLeaderboardSnapshot(snapshot: Omit<LeaderboardSnapshot, 'id'>): Promise<LeaderboardSnapshot> {
     const [newSnapshot] = await db.insert(leaderboardSnapshots).values(snapshot).returning();
     return newSnapshot;
+  }
+
+  // Appliance Anomaly Detection
+  async createApplianceReading(reading: InsertApplianceReading): Promise<ApplianceReading> {
+    const [newReading] = await db.insert(applianceReadings).values(reading).returning();
+    return newReading;
+  }
+
+  async getApplianceReadings(userId: string, startTime: Date, endTime: Date): Promise<ApplianceReading[]> {
+    return await db.select().from(applianceReadings)
+      .where(and(
+        eq(applianceReadings.userId, userId),
+        gte(applianceReadings.timestamp, startTime),
+        lte(applianceReadings.timestamp, endTime)
+      ))
+      .orderBy(applianceReadings.timestamp);
+  }
+
+  async getApplianceAnomalies(userId: string): Promise<ApplianceAnomaly[]> {
+    return await db.select({
+      id: applianceAnomalies.id,
+      applianceReadingId: applianceAnomalies.applianceReadingId,
+      timestamp: applianceAnomalies.timestamp,
+      anomalyType: applianceAnomalies.anomalyType,
+      severity: applianceAnomalies.severity
+    })
+    .from(applianceAnomalies)
+    .innerJoin(applianceReadings, eq(applianceAnomalies.applianceReadingId, applianceReadings.id))
+    .where(eq(applianceReadings.userId, userId))
+    .orderBy(desc(applianceAnomalies.timestamp));
+  }
+
+  async createApplianceAnomaly(anomaly: InsertApplianceAnomaly): Promise<ApplianceAnomaly> {
+    const [newAnomaly] = await db.insert(applianceAnomalies).values(anomaly).returning();
+    return newAnomaly;
+  }
+
+  // Energy Marketplace
+  async createHouseholdEnergy(energy: InsertHouseholdEnergy): Promise<HouseholdEnergy> {
+    const [newEnergy] = await db.insert(householdEnergy).values(energy).returning();
+    return newEnergy;
+  }
+
+  async getHouseholdEnergy(householdId: string, startTime: Date, endTime: Date): Promise<HouseholdEnergy[]> {
+    return await db.select().from(householdEnergy)
+      .where(and(
+        eq(householdEnergy.householdId, householdId),
+        gte(householdEnergy.timestamp, startTime),
+        lte(householdEnergy.timestamp, endTime)
+      ))
+      .orderBy(householdEnergy.timestamp);
+  }
+
+  async createEnergyTrade(trade: InsertEnergyTrade): Promise<EnergyTrade> {
+    const [newTrade] = await db.insert(energyTrades).values(trade).returning();
+    return newTrade;
+  }
+
+  async getEnergyTrades(): Promise<EnergyTrade[]> {
+    return await db.select().from(energyTrades)
+      .orderBy(desc(energyTrades.timestamp));
+  }
+
+  // Battery Management
+  async createBatteryLog(log: InsertBatteryLog): Promise<BatteryLog> {
+    const [newLog] = await db.insert(batteryLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getBatteryLogs(householdId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]> {
+    return await db.select().from(batteryLogs)
+      .where(and(
+        eq(batteryLogs.householdId, householdId),
+        gte(batteryLogs.timestamp, startTime),
+        lte(batteryLogs.timestamp, endTime)
+      ))
+      .orderBy(batteryLogs.timestamp);
+  }
+
+  async getLatestBatteryStatus(householdId: string): Promise<BatteryLog | undefined> {
+    const [latest] = await db.select().from(batteryLogs)
+      .where(eq(batteryLogs.householdId, householdId))
+      .orderBy(desc(batteryLogs.timestamp))
+      .limit(1);
+    return latest || undefined;
   }
 }
 
