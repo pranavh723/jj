@@ -466,18 +466,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/battery", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
-      const households = await storage.getHouseholdsByUserId(user.userId);
+      const userId = user.userId;
       
-      if (households.length === 0) {
-        return res.json({ status: null, logs: [], recommendation: null });
-      }
+      const latestStatus = await storage.getLatestBatteryStatus(userId);
       
-      const household = households[0];
-      const latestStatus = await storage.getLatestBatteryStatus(household.id);
-      
-      // Generate mock battery logs if none exist
-      const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      let logs = await storage.getBatteryLogs(household.id, last7Days, new Date());
+      // Get battery logs for the last 30 days
+      const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      let logs = await storage.getBatteryLogs(userId, last30Days, new Date());
       
       if (logs.length === 0) {
         // Generate mock data
@@ -489,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const cycleCount = 150 + Math.floor(Math.random() * 50);
           
           mockLogs.push({
-            householdId: household.id,
+            userId,
             timestamp,
             socPercent,
             dodPercent,
@@ -503,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createBatteryLog(log);
         }
         
-        logs = await storage.getBatteryLogs(household.id, last7Days, new Date());
+        logs = await storage.getBatteryLogs(userId, last30Days, new Date());
       }
       
       const currentHour = new Date().getHours();
@@ -515,14 +510,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recommendation = "Great time to charge! Solar generation is at peak.";
       }
       
-      res.json({
-        status: latestStatus,
-        logs: logs.slice(-7), // Last 7 entries
-        recommendation
-      });
+      res.json(logs);
     } catch (error) {
       console.error('Get battery error:', error);
       res.status(500).json({ message: 'Failed to fetch battery data' });
+    }
+  });
+
+  app.post("/api/battery", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const userId = user.userId;
+      
+      // Validate request body and set userId server-side
+      const validatedData = insertBatteryLogSchema.omit({ userId: true }).parse(req.body);
+      
+      const batteryLog = await storage.createBatteryLog({
+        ...validatedData,
+        userId,
+        timestamp: new Date(validatedData.timestamp),
+      });
+      
+      res.status(201).json(batteryLog);
+    } catch (error) {
+      console.error('Create battery log error:', error);
+      res.status(500).json({ message: 'Failed to create battery log' });
     }
   });
 

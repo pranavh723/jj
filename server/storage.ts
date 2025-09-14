@@ -76,8 +76,8 @@ export interface IStorage {
 
   // Battery Management
   createBatteryLog(log: InsertBatteryLog): Promise<BatteryLog>;
-  getBatteryLogs(householdId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]>;
-  getLatestBatteryStatus(householdId: string): Promise<BatteryLog | undefined>;
+  getBatteryLogs(userId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]>;
+  getLatestBatteryStatus(userId: string): Promise<BatteryLog | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -334,19 +334,19 @@ export class DatabaseStorage implements IStorage {
     return newLog;
   }
 
-  async getBatteryLogs(householdId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]> {
+  async getBatteryLogs(userId: string, startTime: Date, endTime: Date): Promise<BatteryLog[]> {
     return await db.select().from(batteryLogs)
       .where(and(
-        eq(batteryLogs.householdId, householdId),
+        eq(batteryLogs.userId, userId),
         gte(batteryLogs.timestamp, startTime),
         lte(batteryLogs.timestamp, endTime)
       ))
-      .orderBy(batteryLogs.timestamp);
+      .orderBy(desc(batteryLogs.timestamp));
   }
 
-  async getLatestBatteryStatus(householdId: string): Promise<BatteryLog | undefined> {
+  async getLatestBatteryStatus(userId: string): Promise<BatteryLog | undefined> {
     const [latest] = await db.select().from(batteryLogs)
-      .where(eq(batteryLogs.householdId, householdId))
+      .where(eq(batteryLogs.userId, userId))
       .orderBy(desc(batteryLogs.timestamp))
       .limit(1);
     return latest || undefined;

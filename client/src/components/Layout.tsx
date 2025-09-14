@@ -15,7 +15,10 @@ import {
   Moon, 
   Sun,
   LogOut,
-  Leaf
+  Leaf,
+  Cpu,
+  TrendingUp,
+  Battery
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -50,6 +53,9 @@ export function Layout({ children }: LayoutProps) {
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/household-setup', label: 'Household Setup', icon: Settings },
     { path: '/devices', label: 'Devices', icon: Zap },
+    { path: '/appliances', label: 'Appliances', icon: Cpu },
+    { path: '/marketplace', label: 'Marketplace', icon: TrendingUp },
+    { path: '/battery', label: 'Battery', icon: Battery },
     { path: '/forecasting', label: 'Forecasting', icon: CloudSun },
     { path: '/community', label: 'Community', icon: Users },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },

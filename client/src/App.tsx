@@ -12,6 +12,9 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import HouseholdSetup from "./pages/HouseholdSetup";
 import Devices from "./pages/Devices";
+import Appliances from "./pages/Appliances";
+import Marketplace from "./pages/Marketplace";
+import Battery from "./pages/Battery";
 import Forecasting from "./pages/Forecasting";
 import Community from "./pages/Community";
 import Analytics from "./pages/Analytics";
@@ -24,6 +27,9 @@ function AuthenticatedApp() {
         <Route path="/" component={Dashboard} />
         <Route path="/household-setup" component={HouseholdSetup} />
         <Route path="/devices" component={Devices} />
+        <Route path="/appliances" component={Appliances} />
+        <Route path="/marketplace" component={Marketplace} />
+        <Route path="/battery" component={Battery} />
         <Route path="/forecasting" component={Forecasting} />
         <Route path="/community" component={Community} />
         <Route path="/analytics" component={Analytics} />
