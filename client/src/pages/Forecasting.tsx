@@ -130,12 +130,12 @@ export default function Forecasting() {
     if (!processedData.pv.length) return null;
 
     const pvData = processedData.pv;
-    const maxOutput = Math.max(...pvData.map(p => p.acKw));
-    const totalGeneration = pvData.reduce((sum, p) => sum + p.acKw, 0);
+    const maxOutput = Math.max(...pvData.map((p: PvForecast) => p.acKw));
+    const totalGeneration = pvData.reduce((sum: number, p: PvForecast) => sum + p.acKw, 0);
     const avgOutput = totalGeneration / pvData.length;
     
-    const peakHour = pvData.find(p => p.acKw === maxOutput);
-    const lowPerformanceHours = pvData.filter(p => p.acKw < avgOutput * 0.3).length;
+    const peakHour = pvData.find((p: PvForecast) => p.acKw === maxOutput);
+    const lowPerformanceHours = pvData.filter((p: PvForecast) => p.acKw < avgOutput * 0.3).length;
     
     return {
       maxOutput: maxOutput.toFixed(2),

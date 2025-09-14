@@ -74,7 +74,7 @@ export class SolarService {
     const efficiency = config.capacityKw > 0 ? (acPowerKw / config.capacityKw) : 0;
 
     return {
-      timestamp: new Date(), // Add required timestamp field
+      timestamp: weather.timestamp, // Use weather timestamp for proper alignment
       acPowerKw: Math.round(acPowerKw * 1000) / 1000, // Round to 3 decimal places
       dcPowerKw: Math.round(dcPowerKw * 1000) / 1000,
       efficiency: Math.round(efficiency * 1000) / 1000
