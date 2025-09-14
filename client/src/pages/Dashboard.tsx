@@ -91,6 +91,17 @@ export default function Dashboard() {
     enabled: !!currentHousehold,
   });
 
+  // Fetch live grid consumption and tariff data
+  const { 
+    data: gridData,
+    isLoading: isLoadingGrid,
+    error: gridError 
+  } = useQuery<any>({
+    queryKey: ['/api/grid'],
+    enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds for live grid data
+  });
+
   // Generate recommendations mutation
   const generateRecommendationsMutation = useMutation({
     mutationFn: () => {
@@ -219,26 +230,35 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Grid Consumption Card */}
+        {/* Grid Consumption Card - Live Data */}
         <Card className="card-hover">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
                 <Zap className="text-secondary w-6 h-6" />
               </div>
-              <Badge variant="secondary" className="bg-secondary/10 text-secondary" data-testid="badge-grid-live">
-                Live
+              <Badge 
+                variant="secondary" 
+                className={`${gridData?.current?.status === 'peak_demand' ? 'bg-orange-100 text-orange-800' : 
+                  gridData?.current?.status === 'off_peak' ? 'bg-green-100 text-green-800' : 
+                  'bg-secondary/10 text-secondary'}`}
+                data-testid="badge-grid-live"
+              >
+                {gridData?.current?.status === 'peak_demand' ? 'Peak' : 
+                 gridData?.current?.status === 'off_peak' ? 'Off-Peak' : 'Live'}
               </Badge>
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground" data-testid="text-grid-consumption">
-                {metrics.gridConsumed.toFixed(1)} kW
+                {gridData?.current?.consumption_kW?.toFixed(1) || metrics.gridConsumed.toFixed(1)} kW
               </p>
               <p className="text-sm text-muted-foreground">Grid Consumption</p>
               <div className="mt-2 flex items-center text-sm">
-                <TrendingDown className="text-primary w-4 h-4 mr-1" />
-                <span className="text-primary">-8%</span>
-                <span className="text-muted-foreground ml-1">vs yesterday</span>
+                <IndianRupee className="text-purple-500 w-4 h-4 mr-1" />
+                <span className="text-purple-600 font-medium">
+                  ₹{gridData?.current?.tariff_inr_per_kWh?.toFixed(2) || '5.50'}/kWh
+                </span>
+                <span className="text-muted-foreground ml-1">• ₹{gridData?.costs?.current_hourly_cost?.toFixed(0) || '14'}/hr</span>
               </div>
             </div>
           </CardContent>
@@ -345,23 +365,28 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">Renewable Share</CardTitle>
-              <span className="text-sm text-muted-foreground">This Month</span>
+              <CardTitle className="text-lg font-semibold">Energy Mix</CardTitle>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${gridData?.energy_mix?.solar_active ? 'bg-yellow-400' : 'bg-gray-400'}`}></div>
+                <span className="text-sm text-muted-foreground">
+                  {gridData?.energy_mix?.solar_active ? 'Solar Active' : 'Night Mode'}
+                </span>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <RenewableChart 
-              solarPercentage={metrics.renewableShare} 
-              gridPercentage={100 - metrics.renewableShare} 
+              solarPercentage={gridData?.energy_mix?.renewable_percentage || metrics.renewableShare} 
+              gridPercentage={gridData?.energy_mix?.grid_percentage || (100 - metrics.renewableShare)} 
             />
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-primary rounded-full"></div>
-                  <span className="text-sm text-muted-foreground">Solar Energy</span>
+                  <span className="text-sm text-muted-foreground">Renewable Energy</span>
                 </div>
                 <span className="text-sm font-medium" data-testid="text-solar-percentage">
-                  {metrics.renewableShare.toFixed(0)}%
+                  {(gridData?.energy_mix?.renewable_percentage || metrics.renewableShare)?.toFixed(1)}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -370,8 +395,19 @@ export default function Dashboard() {
                   <span className="text-sm text-muted-foreground">Grid Energy</span>
                 </div>
                 <span className="text-sm font-medium" data-testid="text-grid-percentage">
-                  {(100 - metrics.renewableShare).toFixed(0)}%
+                  {(gridData?.energy_mix?.grid_percentage || (100 - metrics.renewableShare))?.toFixed(1)}%
                 </span>
+              </div>
+              <div className="mt-3 pt-3 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Mix Status:</span>
+                  <span className={`font-medium ${gridData?.energy_mix?.solar_active ? 'text-yellow-600' : 'text-blue-600'}`}>
+                    {gridData?.energy_mix?.solar_active ? 
+                      `${(gridData?.energy_mix?.renewable_percentage || 0)?.toFixed(0)}% Solar + ${(gridData?.energy_mix?.grid_percentage || 0)?.toFixed(0)}% Grid` :
+                      `${(gridData?.energy_mix?.renewable_percentage || 0)?.toFixed(0)}% Battery + ${(gridData?.energy_mix?.grid_percentage || 0)?.toFixed(0)}% Grid`
+                    }
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>

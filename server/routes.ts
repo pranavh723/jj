@@ -651,6 +651,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Energy Marketplace Routes - Enhanced with detailed P2P trade data
   app.get("/api/marketplace", authenticateToken, async (req, res) => {
     try {
+      // Get time range from query parameter (today, week, month)
+      const timeRange = req.query.range as string || 'today';
+      let timeRangeHours = 24; // Default: today (24 hours)
+      
+      if (timeRange === 'week') {
+        timeRangeHours = 7 * 24; // 7 days
+      } else if (timeRange === 'month') {
+        timeRangeHours = 30 * 24; // 30 days
+      }
+      
       // Get all households for marketplace simulation
       const households = await storage.getAllHouseholds();
       
@@ -663,8 +673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       // Generate dynamic marketplace trades with all required fields
+      // Adjust trade count based on time range
       const currentTrades = [];
-      const numTrades = Math.min(25, Math.max(10, households.length * 2));
+      let baseNumTrades = Math.min(25, Math.max(10, households.length * 2));
+      if (timeRange === 'week') baseNumTrades = baseNumTrades * 5;
+      if (timeRange === 'month') baseNumTrades = baseNumTrades * 15;
+      const numTrades = Math.min(100, baseNumTrades); // Cap at 100 trades
       
       for (let i = 0; i < numTrades; i++) {
         const kWh = Math.round((Math.random() * 8 + 1) * 10) / 10; // 1.0 - 9.0 kWh
@@ -677,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           buyer_name: mockNames[Math.floor(Math.random() * mockNames.length)],
           kWh: kWh,
           price: totalPrice,
-          timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000) // Last 24 hours
+          timestamp: new Date(Date.now() - Math.random() * timeRangeHours * 60 * 60 * 1000) // Within specified time range
         };
         
         // Ensure seller and buyer are different

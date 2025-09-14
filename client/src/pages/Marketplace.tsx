@@ -15,20 +15,33 @@ import {
 } from 'lucide-react';
 
 interface MarketplaceTrade {
-  id: string;
-  energyTradedKwh: number;
+  trade_id: string;
+  seller_name: string;
+  buyer_name: string;
+  kWh: number;
+  price: number;
   timestamp: string;
 }
 
 interface TopSeller {
   rank: number;
+  seller_name: string;
   energyTradedKwh: number;
+  totalEarnings: number;
+}
+
+interface MarketplaceMetrics {
+  totalEnergyTraded: number;
+  totalValue: number;
+  averagePrice: number;
+  activeTraders: number;
+  renewablePercentage: number;
 }
 
 interface MarketplaceData {
   trades: MarketplaceTrade[];
   topSellers: TopSeller[];
-  renewablePercentage: number;
+  metrics: MarketplaceMetrics;
 }
 
 export default function Marketplace() {
@@ -41,7 +54,7 @@ export default function Marketplace() {
     isLoading: isLoadingMarketplace,
     refetch: refetchMarketplace 
   } = useQuery<MarketplaceData>({
-    queryKey: ['/api/marketplace', timeRange],
+    queryKey: [`/api/marketplace?range=${timeRange}`, timeRange],
     enabled: !!user,
   });
 
@@ -97,7 +110,7 @@ export default function Marketplace() {
       </div>
 
       {/* Market Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
@@ -117,9 +130,9 @@ export default function Marketplace() {
             <div className="flex items-center space-x-2">
               <Zap className="w-5 h-5 text-yellow-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Energy Traded</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Energy</p>
                 <p className="text-2xl font-bold" data-testid="text-total-energy">
-                  {marketplaceData?.trades?.reduce((sum, trade) => sum + trade.energyTradedKwh, 0)?.toFixed(2) || 0} kWh
+                  {marketplaceData?.metrics?.totalEnergyTraded?.toFixed(2) || 0} kWh
                 </p>
               </div>
             </div>
@@ -129,11 +142,58 @@ export default function Marketplace() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <Users className="w-5 h-5 text-blue-500" />
+              <ArrowUpRight className="w-5 h-5 text-purple-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Renewable Energy</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Value</p>
+                <p className="text-2xl font-bold text-purple-600" data-testid="text-total-value">
+                  {new Intl.NumberFormat('en-IN', { 
+                    style: 'currency', 
+                    currency: 'INR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0 
+                  }).format(marketplaceData?.metrics?.totalValue || 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <ArrowDownRight className="w-5 h-5 text-orange-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Avg Price</p>
+                <p className="text-2xl font-bold text-orange-600" data-testid="text-average-price">
+                  ₹{marketplaceData?.metrics?.averagePrice?.toFixed(2) || 0}/kWh
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-cyan-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Traders</p>
+                <p className="text-2xl font-bold text-cyan-600" data-testid="text-active-traders">
+                  {marketplaceData?.metrics?.activeTraders || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-5 h-5 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Renewable</p>
                 <p className="text-2xl font-bold text-green-500" data-testid="text-renewable-percentage">
-                  {marketplaceData?.renewablePercentage?.toFixed(1) || 0}%
+                  {marketplaceData?.metrics?.renewablePercentage?.toFixed(1) || 0}%
                 </p>
               </div>
             </div>
@@ -166,7 +226,7 @@ export default function Marketplace() {
               <div className="space-y-3">
                 {marketplaceData.trades.slice(0, 10).map((trade, index) => (
                   <div
-                    key={trade.id}
+                    key={trade.trade_id}
                     className="flex items-center justify-between p-3 border rounded-lg"
                     data-testid={`trade-item-${index}`}
                   >
@@ -175,15 +235,15 @@ export default function Marketplace() {
                         <ArrowUpRight className="w-4 h-4 text-green-600 dark:text-green-400" />
                       </div>
                       <div>
-                        <p className="font-medium">Energy Trade</p>
+                        <p className="font-medium">{trade.seller_name} → {trade.buyer_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Peer-to-peer transaction
+                          {trade.kWh.toFixed(2)} kWh • ₹{trade.price.toFixed(2)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">
-                        {trade.energyTradedKwh.toFixed(2)} kWh
+                      <p className="font-medium text-green-600">
+                        ₹{trade.price.toFixed(2)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(trade.timestamp).toLocaleTimeString()}
@@ -231,9 +291,9 @@ export default function Marketplace() {
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium">Anonymous Seller {seller.rank}</p>
+                        <p className="font-medium">{seller.seller_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Community member
+                          ₹{seller.totalEarnings.toFixed(2)} earned
                         </p>
                       </div>
                     </div>
@@ -242,7 +302,7 @@ export default function Marketplace() {
                         {seller.energyTradedKwh.toFixed(2)} kWh
                       </p>
                       <Badge variant="outline" className="text-xs">
-                        Top Seller
+                        Rank #{seller.rank}
                       </Badge>
                     </div>
                   </div>
@@ -278,13 +338,13 @@ export default function Marketplace() {
                   <span>Average trade size:</span>
                   <span className="font-medium">
                     {marketplaceData?.trades?.length ? 
-                      (marketplaceData.trades.reduce((sum, trade) => sum + trade.energyTradedKwh, 0) / marketplaceData.trades.length).toFixed(2) : 0} kWh
+                      (marketplaceData.trades.reduce((sum, trade) => sum + trade.kWh, 0) / marketplaceData.trades.length).toFixed(2) : 0} kWh
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Renewable share:</span>
                   <span className="font-medium text-green-600">
-                    {marketplaceData?.renewablePercentage?.toFixed(1) || 0}%
+                    {marketplaceData?.metrics?.renewablePercentage?.toFixed(1) || 0}%
                   </span>
                 </div>
               </div>
@@ -299,13 +359,13 @@ export default function Marketplace() {
                 <div className="flex justify-between text-sm">
                   <span>CO₂ reduction:</span>
                   <span className="font-medium text-green-600">
-                    {((marketplaceData?.trades?.reduce((sum, trade) => sum + trade.energyTradedKwh, 0) || 0) * 0.82).toFixed(1)} kg
+                    {((marketplaceData?.trades?.reduce((sum, trade) => sum + trade.kWh, 0) || 0) * 0.82).toFixed(1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Grid load reduction:</span>
                   <span className="font-medium">
-                    {marketplaceData?.trades?.reduce((sum, trade) => sum + trade.energyTradedKwh, 0)?.toFixed(1) || 0} kWh
+                    {marketplaceData?.trades?.reduce((sum, trade) => sum + trade.kWh, 0)?.toFixed(1) || 0} kWh
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

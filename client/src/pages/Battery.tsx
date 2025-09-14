@@ -105,7 +105,7 @@ export default function Battery() {
     enabled: !!user,
   });
 
-  // Fetch main battery status (live data)
+  // Fetch main battery status (real-time live data)
   const { 
     data: mainBatteryStatus, 
     isLoading: isLoadingMainBattery,
@@ -114,7 +114,7 @@ export default function Battery() {
   } = useQuery<any>({
     queryKey: ['/api/main-battery'],
     enabled: !!user,
-    refetchInterval: 30000, // Refresh every 30 seconds for live data
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time SoC simulation
   });
 
   // Fetch battery logs (for manual entry history)
