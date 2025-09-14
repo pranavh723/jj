@@ -948,81 +948,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Main Battery Status API - Single house battery system
+  // Main Battery Status API - Real-time simulation with live SoC updates
   app.get("/api/main-battery", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
       const userId = user.userId;
       
-      // Get the latest battery log to determine current status
+      // Get the latest battery log to use as baseline
       const latestLog = await storage.getLatestBatteryStatus(userId);
+      const currentTime = new Date();
+      const currentHour = currentTime.getHours();
+      const currentMinute = currentTime.getMinutes();
       
-      // If no logs exist, create a realistic main battery status
-      if (!latestLog) {
-        const defaultStatus = {
-          stateOfCharge: 75,
-          depthOfDischarge: 25,
-          cycleCount: 450,
-          health: 'good',
-          voltage: 12.6,
-          temperature: 25,
-          lastUpdated: new Date().toISOString(),
-          status: 'normal',
-          recommendations: ['Monitor battery levels regularly', 'Charge during solar peak hours (10AM-3PM)']
+      // Default values if no logs exist
+      let baselineData = {
+        socPercent: 75,
+        dodPercent: 25,
+        cycleCount: 450,
+        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+        alert: null
+      };
+      
+      if (latestLog) {
+        baselineData = {
+          socPercent: latestLog.socPercent,
+          dodPercent: latestLog.dodPercent,
+          cycleCount: latestLog.cycleCount,
+          timestamp: latestLog.timestamp,
+          alert: latestLog.alert
         };
-        return res.json(defaultStatus);
       }
+      
+      // REAL-TIME SoC SIMULATION - Updates every few seconds
+      const timeSinceLastLog = (currentTime.getTime() - baselineData.timestamp.getTime()) / 1000; // seconds
+      const secondsNow = currentTime.getSeconds();
+      
+      // Solar generation simulation (affects charging behavior)
+      const solarActive = currentHour >= 6 && currentHour <= 18;
+      let solarIntensity = 0;
+      
+      if (solarActive) {
+        // Peak solar at 12 PM, declining towards 6 AM/6 PM
+        const solarPeakFactor = Math.sin(((currentHour - 6) / 12) * Math.PI);
+        solarIntensity = Math.max(0, solarPeakFactor * 0.8 + Math.random() * 0.2); // 0-1 scale
+      }
+      
+      // Simulate charging/discharging patterns based on time and solar
+      let socAdjustment = 0;
+      let currentBatteryMode = 'idle';
+      
+      if (solarActive && solarIntensity > 0.3) {
+        // Solar charging during good sunlight
+        if (baselineData.socPercent < 95) {
+          const chargingRate = solarIntensity * 0.008; // 0.8% per minute max
+          socAdjustment = Math.min(5, chargingRate * (timeSinceLastLog / 60));
+          currentBatteryMode = 'charging';
+        }
+      } else if (currentHour >= 18 && currentHour <= 23) {
+        // Evening discharge for house loads
+        const dischargeRate = 0.005; // 0.5% per minute
+        socAdjustment = -Math.min(3, dischargeRate * (timeSinceLastLog / 60));
+        currentBatteryMode = 'discharging';
+      } else if (currentHour >= 0 && currentHour <= 6) {
+        // Overnight gradual discharge
+        const nightDischargeRate = 0.002; // 0.2% per minute
+        socAdjustment = -Math.min(1, nightDischargeRate * (timeSinceLastLog / 60));
+        currentBatteryMode = 'discharging';
+      }
+      
+      // Add small real-time fluctuations (updates every few seconds)
+      const realTimeFluctuation = Math.sin((Date.now() / 15000) + userId.charCodeAt(0)) * 0.3; // ±0.3%
+      const randomFluctuation = (Math.random() - 0.5) * 0.2; // ±0.1%
+      
+      // Calculate live SoC with bounds checking
+      let liveSoC = Math.max(5, Math.min(100, 
+        baselineData.socPercent + socAdjustment + realTimeFluctuation + randomFluctuation
+      ));
+      
+      // Ensure SoC stays realistic during very rapid updates
+      if (Math.abs(liveSoC - baselineData.socPercent) > 10) {
+        liveSoC = baselineData.socPercent + (liveSoC > baselineData.socPercent ? 8 : -8);
+      }
+      
+      const liveDoD = Math.max(0, Math.min(95, 100 - liveSoC));
       
       // Calculate health status based on cycles and DoD
       let health: 'excellent' | 'good' | 'fair' | 'poor' = 'excellent';
       let status: 'normal' | 'warning' | 'critical' = 'normal';
       
-      if (latestLog.cycleCount > 2000 || latestLog.dodPercent > 80) {
+      if (baselineData.cycleCount > 2000 || liveDoD > 80) {
         health = 'poor';
         status = 'critical';
-      } else if (latestLog.cycleCount > 1500 || latestLog.dodPercent > 60) {
+      } else if (baselineData.cycleCount > 1500 || liveDoD > 60) {
         health = 'fair';
         status = 'warning';
-      } else if (latestLog.cycleCount > 1000 || latestLog.dodPercent > 40) {
+      } else if (baselineData.cycleCount > 1000 || liveDoD > 40) {
         health = 'good';
         status = 'normal';
       }
       
       // Generate intelligent recommendations
       const recommendations: string[] = [];
-      if (latestLog.dodPercent > 80) {
-        recommendations.push('Reduce depth of discharge below 80% to extend battery life');
+      if (liveDoD > 80) {
+        recommendations.push('Critical: Battery depth of discharge is too high - charge immediately');
       }
-      if (latestLog.socPercent < 20) {
-        recommendations.push('Charge battery above 20% to prevent deep discharge damage');
+      if (liveSoC < 20) {
+        recommendations.push('Low battery: Charge during solar peak hours (10AM-3PM) for optimal performance');
       }
-      if (latestLog.cycleCount > 1500) {
+      if (baselineData.cycleCount > 1500) {
         recommendations.push('Consider battery replacement planning - high cycle count detected');
       }
-      if (latestLog.socPercent > 95) {
-        recommendations.push('Avoid keeping battery at full charge for extended periods');
+      if (liveSoC > 95 && currentBatteryMode === 'charging') {
+        recommendations.push('Battery nearly full - solar excess can be sold to grid');
+      }
+      if (solarActive && liveSoC < 80 && solarIntensity > 0.5) {
+        recommendations.push('Excellent solar conditions - optimal time for battery charging');
       }
       if (recommendations.length === 0) {
         recommendations.push('Battery performance is optimal - continue current usage patterns');
       }
       
-      // Calculate estimated voltage based on SoC (typical 12V lead-acid curve)
-      const voltage = 11.8 + (latestLog.socPercent / 100) * 1.4;
+      // Calculate live voltage based on SoC (typical 12V lead-acid curve)
+      const voltage = 11.8 + (liveSoC / 100) * 1.4 + (Math.random() - 0.5) * 0.1;
       
-      // Simulate temperature (20-30°C range)
-      const temperature = 20 + Math.random() * 10;
+      // Simulate realistic temperature variation
+      const baseTemp = 25;
+      const tempVariation = (currentBatteryMode === 'charging' ? 2 : 0) + Math.sin(Date.now() / 30000) * 1.5;
+      const temperature = baseTemp + tempVariation + (Math.random() - 0.5) * 0.5;
+      
+      // Generate alerts based on current conditions
+      let currentAlert = baselineData.alert;
+      if (liveSoC < 15) {
+        currentAlert = 'Critical: Battery charge below 15% - immediate charging required';
+      } else if (liveDoD > 85) {
+        currentAlert = 'Warning: High depth of discharge - consider reducing power consumption';
+      } else if (liveSoC > 98 && currentBatteryMode === 'charging') {
+        currentAlert = 'Notice: Battery nearly full - excess solar can be exported to grid';
+      } else if (liveSoC > 20 && liveDoD < 80) {
+        currentAlert = null; // Clear alerts when in normal range
+      }
       
       const mainBatteryStatus = {
-        stateOfCharge: Math.round(latestLog.socPercent * 10) / 10,
-        depthOfDischarge: Math.round(latestLog.dodPercent * 10) / 10,
-        cycleCount: latestLog.cycleCount,
+        stateOfCharge: Math.round(liveSoC * 10) / 10,
+        depthOfDischarge: Math.round(liveDoD * 10) / 10,
+        cycleCount: baselineData.cycleCount,
         health,
         voltage: Math.round(voltage * 100) / 100,
         temperature: Math.round(temperature * 10) / 10,
-        lastUpdated: latestLog.timestamp.toISOString(),
+        lastUpdated: currentTime.toISOString(),
         status,
+        batteryMode: currentBatteryMode,
+        solarIntensity: Math.round(solarIntensity * 100),
+        solarActive,
         recommendations,
-        alert: latestLog.alert || null
+        alert: currentAlert,
+        // Additional live data for dashboard
+        powerFlow: {
+          charging_kW: currentBatteryMode === 'charging' ? Math.round(solarIntensity * 2.5 * 100) / 100 : 0,
+          discharging_kW: currentBatteryMode === 'discharging' ? Math.round(Math.random() * 1.8 + 0.5, 2) : 0,
+          idle_kW: currentBatteryMode === 'idle' ? Math.round(Math.random() * 0.2, 2) : 0
+        }
       };
       
       res.json(mainBatteryStatus);
