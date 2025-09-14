@@ -23,11 +23,19 @@
   --border: hsl(214.3, 31.8%, 91.4%);
   --input: hsl(214.3, 31.8%, 91.4%);
   --ring: hsl(142, 76%, 36%);
+  
+  /* Neon Colors for Apple-inspired theme */
+  --neon-blue: #00C2FF;
+  --neon-orange: #FF7A00;
+  --neon-red: #FF3B30;
+  
+  /* Enhanced Chart Colors */
   --chart-1: hsl(142, 76%, 36%);
-  --chart-2: hsl(217, 91%, 60%);
-  --chart-3: hsl(43, 96%, 56%);
-  --chart-4: hsl(27, 96%, 61%);
+  --chart-2: var(--neon-blue);
+  --chart-3: var(--neon-orange);
+  --chart-4: var(--neon-red);
   --chart-5: hsl(12, 76%, 61%);
+  
   --sidebar: hsl(0, 0%, 100%);
   --sidebar-foreground: hsl(222.2, 84%, 4.9%);
   --sidebar-primary: hsl(142, 76%, 36%);
@@ -72,6 +80,12 @@
   --border: hsl(217.2, 32.6%, 17.5%);
   --input: hsl(217.2, 32.6%, 17.5%);
   --ring: hsl(142, 76%, 36%);
+  
+  /* Neon Colors for Apple-inspired theme - same in dark mode */
+  --neon-blue: #00C2FF;
+  --neon-orange: #FF7A00;
+  --neon-red: #FF3B30;
+  
   --sidebar: hsl(222.2, 84%, 4.9%);
   --sidebar-foreground: hsl(210, 40%, 98%);
   --sidebar-primary: hsl(142, 76%, 36%);
@@ -81,6 +95,33 @@
   --sidebar-border: hsl(217.2, 32.6%, 17.5%);
   --sidebar-ring: hsl(142, 76%, 36%);
 }
+
+/* Chart Color Protection & SVG Styling */
+svg {
+  filter: none !important;
+}
+
+.recharts-wrapper svg {
+  filter: none !important;
+}
+
+.recharts-surface {
+  filter: none !important;
+}
+
+/* Ensure chart elements maintain their colors */
+.recharts-cartesian-grid line,
+.recharts-cartesian-axis-tick text,
+.recharts-legend-item text {
+  filter: none !important;
+}
+
+/* Chart Color Utilities */
+.chart-color-1 { color: var(--chart-1); }
+.chart-color-2 { color: var(--chart-2); }
+.chart-color-3 { color: var(--chart-3); }
+.chart-color-4 { color: var(--chart-4); }
+.chart-color-5 { color: var(--chart-5); }
 
 /* 🌟 CRAZY COOL ANIMATIONS & EFFECTS */
 @keyframes pulse-green {

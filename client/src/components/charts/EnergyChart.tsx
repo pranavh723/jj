@@ -40,12 +40,12 @@ export function EnergyChart({ data }: EnergyChartProps) {
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+              <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.8}/>
+              <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0.1}/>
             </linearGradient>
             <linearGradient id="gridGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--secondary))" stopOpacity={0.6}/>
-              <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0.1}/>
+              <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.6}/>
+              <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0.1}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
@@ -71,24 +71,24 @@ export function EnergyChart({ data }: EnergyChartProps) {
           <Area
             type="monotone"
             dataKey="solar"
-            stroke="hsl(var(--primary))"
+            stroke="var(--chart-1)"
             strokeWidth={3}
             fill="url(#solarGradient)"
             name="Solar Generation"
-            dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--primary))" }}
+            dot={{ fill: "var(--chart-1)", strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "var(--chart-1)" }}
             animationDuration={1500}
             animationEasing="ease-out"
           />
           <Area
             type="monotone"
             dataKey="grid"
-            stroke="hsl(var(--secondary))"
+            stroke="var(--chart-2)"
             strokeWidth={2}
             fill="url(#gridGradient)"
             name="Grid Consumption"
-            dot={{ fill: "hsl(var(--secondary))", strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--secondary))" }}
+            dot={{ fill: "var(--chart-2)", strokeWidth: 2, r: 3 }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "var(--chart-2)" }}
             animationDuration={1800}
             animationEasing="ease-out"
           />
