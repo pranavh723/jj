@@ -12,6 +12,7 @@ import {
   insertHouseholdEnergySchema, insertEnergyTradeSchema, insertBatteryLogSchema,
   type InsertApplianceAnomaly
 } from "@shared/schema";
+import { normalizeApplianceName } from "@shared/applianceUtils";
 import { z } from "zod";
 
 // Extended Express Request interface
@@ -596,6 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).parse(req.body);
       const fullData = {
         ...data,
+        applianceName: normalizeApplianceName(data.applianceName),
         userId: user.userId
       };
       
