@@ -433,7 +433,7 @@ export default function Analytics() {
                   <CardContent>
                     <RenewableChart 
                       solarPercentage={analytics.efficiency.overallEfficiency} 
-                      gridPercentage={100 - analytics.efficiency.overallEfficiency} 
+                      gridPercentage={analytics.efficiency.gridDependency} 
                     />
                   </CardContent>
                 </Card>
