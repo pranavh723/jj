@@ -68,6 +68,16 @@ export const api = {
     return response.json();
   },
 
+  async updateHousehold(id: string, data: any) {
+    const response = await apiRequest(`/api/households/${id}`, 'PUT', data);
+    return response.json();
+  },
+
+  async deleteHousehold(id: string) {
+    const response = await apiRequest(`/api/households/${id}`, 'DELETE');
+    return response.json();
+  },
+
   // Devices
   async createDevice(data: any) {
     const response = await apiRequest('/api/devices', 'POST', data);

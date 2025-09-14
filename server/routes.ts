@@ -308,6 +308,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/households/:id", authenticateToken, async (req, res) => {
+    try {
+      const householdId = req.params.id;
+      const userId = (req as AuthenticatedRequest).user.userId;
+      
+      // Verify household belongs to user
+      const existingHousehold = await storage.getHousehold(householdId);
+      if (!existingHousehold || existingHousehold.userId !== userId) {
+        return res.status(404).json({ message: 'Household not found' });
+      }
+      
+      // Parse and validate update data (excluding userId, id, createdAt)
+      const updateData = insertHouseholdSchema.omit({ userId: true }).parse(req.body);
+      
+      const household = await storage.updateHousehold(householdId, updateData);
+      res.json(household);
+    } catch (error) {
+      console.error('Update household error:', error);
+      res.status(400).json({ message: 'Failed to update household' });
+    }
+  });
+
+  app.delete("/api/households/:id", authenticateToken, async (req, res) => {
+    try {
+      const householdId = req.params.id;
+      const userId = (req as AuthenticatedRequest).user.userId;
+      
+      // Verify household belongs to user
+      const household = await storage.getHousehold(householdId);
+      if (!household || household.userId !== userId) {
+        return res.status(404).json({ message: 'Household not found' });
+      }
+      
+      await storage.deleteHousehold(householdId);
+      res.json({ message: 'Household deleted successfully' });
+    } catch (error) {
+      console.error('Delete household error:', error);
+      res.status(500).json({ message: 'Failed to delete household' });
+    }
+  });
+
   // Device routes
   app.post("/api/devices", authenticateToken, async (req, res) => {
     try {

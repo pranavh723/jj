@@ -25,6 +25,7 @@ export interface IStorage {
   getAllHouseholds(): Promise<Household[]>;
   createHousehold(household: InsertHousehold): Promise<Household>;
   updateHousehold(id: string, household: Partial<Household>): Promise<Household>;
+  deleteHousehold(id: string): Promise<void>;
 
   // Devices
   getDevice(id: string): Promise<Device | undefined>;
@@ -117,6 +118,13 @@ export class DatabaseStorage implements IStorage {
   async updateHousehold(id: string, household: Partial<Household>): Promise<Household> {
     const [updated] = await db.update(households).set(household).where(eq(households.id, id)).returning();
     return updated;
+  }
+
+  async deleteHousehold(id: string): Promise<void> {
+    // First delete all devices associated with this household
+    await db.delete(devices).where(eq(devices.householdId, id));
+    // Then delete the household itself
+    await db.delete(households).where(eq(households.id, id));
   }
 
   async getDevice(id: string): Promise<Device | undefined> {

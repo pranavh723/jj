@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { MapPin, Home, Zap, DollarSign, Leaf, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -84,8 +85,76 @@ export default function HouseholdSetup() {
     },
   });
 
+  // Update household mutation
+  const updateHouseholdMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: HouseholdFormData }) => api.updateHousehold(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/households'] });
+      setEditingHousehold(null);
+      form.reset();
+      toast({
+        title: "Household updated successfully",
+        description: "Your household settings have been updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update household",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete household mutation
+  const deleteHouseholdMutation = useMutation({
+    mutationFn: (id: string) => api.deleteHousehold(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/households'] });
+      toast({
+        title: "Household deleted successfully",
+        description: "The household has been removed from your account.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete household",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: HouseholdFormData) => {
-    createHouseholdMutation.mutate(data);
+    if (editingHousehold) {
+      updateHouseholdMutation.mutate({ id: editingHousehold, data });
+    } else {
+      createHouseholdMutation.mutate(data);
+    }
+  };
+
+  // Function to start editing a household
+  const startEditHousehold = (household: Household) => {
+    setEditingHousehold(household.id);
+    form.reset({
+      name: household.name,
+      latitude: household.latitude,
+      longitude: household.longitude,
+      pvKw: household.pvKw,
+      tilt: household.tilt ?? 30,
+      azimuth: household.azimuth ?? 180,
+      tariffPerKwh: household.tariffPerKwh ?? 5.0,
+      tariffCurrency: household.tariffCurrency ?? 'INR',
+      co2FactorKgPerKwh: household.co2FactorKgPerKwh ?? 0.82,
+    });
+    setActiveTab('new'); // Switch to the form tab
+  };
+
+  // Function to cancel editing
+  const cancelEdit = () => {
+    setEditingHousehold(null);
+    form.reset();
+    setActiveTab('existing');
   };
 
   // Auto-detect location
@@ -150,7 +219,7 @@ export default function HouseholdSetup() {
             Existing Households ({households.length})
           </TabsTrigger>
           <TabsTrigger value="new" data-testid="tab-new-household">
-            Add New Household
+            {editingHousehold ? 'Edit Household' : 'Add New Household'}
           </TabsTrigger>
         </TabsList>
 
@@ -191,11 +260,41 @@ export default function HouseholdSetup() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingHousehold(household.id)}
+                        onClick={() => startEditHousehold(household)}
                         data-testid={`button-edit-household-${household.id}`}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`button-delete-household-${household.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Household</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{household.name}"? This action cannot be undone and will remove all associated devices and data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteHouseholdMutation.mutate(household.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                              data-testid={`confirm-delete-household-${household.id}`}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
 
@@ -250,8 +349,8 @@ export default function HouseholdSetup() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Plus className="w-5 h-5" />
-                <span>Add New Household</span>
+                {editingHousehold ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                <span>{editingHousehold ? 'Edit Household' : 'Add New Household'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -509,17 +608,20 @@ export default function HouseholdSetup() {
                     <Button 
                       type="button" 
                       variant="outline"
-                      onClick={() => setActiveTab('existing')}
+                      onClick={editingHousehold ? cancelEdit : () => setActiveTab('existing')}
                       data-testid="button-cancel-household"
                     >
                       Cancel
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={createHouseholdMutation.isPending}
-                      data-testid="button-create-household"
+                      disabled={createHouseholdMutation.isPending || updateHouseholdMutation.isPending}
+                      data-testid={editingHousehold ? "button-update-household" : "button-create-household"}
                     >
-                      {createHouseholdMutation.isPending ? 'Creating...' : 'Create Household'}
+                      {editingHousehold 
+                        ? (updateHouseholdMutation.isPending ? 'Updating...' : 'Update Household')
+                        : (createHouseholdMutation.isPending ? 'Creating...' : 'Create Household')
+                      }
                     </Button>
                   </div>
                 </form>
