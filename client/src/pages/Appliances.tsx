@@ -16,6 +16,7 @@ import {
   Plus,
   RefreshCw
 } from 'lucide-react';
+import { SimulationToggle } from '@/components/SimulationToggle';
 import { apiRequest } from '@/lib/queryClient';
 import type { ApplianceReading, ApplianceAnomaly, InsertApplianceReading } from '@shared/schema';
 import { insertApplianceReadingSchema } from '@shared/schema';
@@ -155,6 +156,16 @@ export default function Appliances() {
           Refresh
         </Button>
       </div>
+
+      {/* Simulation Toggle */}
+      <SimulationToggle 
+        type="appliance"
+        onDataGenerated={() => {
+          // Refresh the data when new simulated data is generated
+          refetchReadings();
+          refetchAnomalies();
+        }}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

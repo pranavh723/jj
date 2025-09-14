@@ -1,0 +1,47 @@
+Debug and upgrade my GreenGrid project with the following fixes and new features:
+
+1. **Fix existing errors**
+   - Fix the `/api/readings` and `/api/battery` routes → they must accept `POST` requests for adding new logs.
+   - Ensure the "Add Schedule" button in the Battery tab works properly (route + DB schema fix).
+   - Resolve error 500 when adding battery logs.
+
+2. **Add Dummy Data API (for simulation)**
+   - Create `/api/mock/appliance` → returns random appliance readings (name, power, timestamp).
+   - Create `/api/mock/battery` → simulates battery charge/discharge logs (State of Charge %, DoD, timestamp).
+   - Create `/api/mock/grid` → generates dummy grid tariff data (timestamp, tariff_rate ₹/kWh, max_load).
+   - Auto-ingest this dummy data every few seconds into the database so that the dashboard always has fresh values.
+
+3. **Frontend Auto Simulation**
+   - Add a "Start Simulation" toggle button in each tab (Appliances, Battery, Analytics).
+   - When ON → fetch dummy API data every 5 seconds and save it via the respective backend routes.
+   - When OFF → stop fetching.
+
+4. **Anomaly Detection**
+   - On appliance readings, flag:
+     - Power > 1500W → Warning
+     - Power > 1800W → Critical
+   - Store anomalies in DB and show them in the "Recent Anomaly Detections" list.
+   - Color-coded alerts: green (normal), yellow (warning), red (critical).
+
+5. **Graph & UI Fixes**
+   - Fix all charts (Dashboard, Forecasting, Analytics, Battery) → use multiple distinct colors instead of black/white.
+   - Forecasting tab → show both solar generation forecast + weather details correctly.
+   - Analytics tab → show trend charts, pie charts, and KPIs using dummy data.
+   - Style graphs with Tailwind + Recharts (distinct bright colors: blue, green, orange, red).
+
+6. **Grid Tariff Integration**
+   - In Analytics, add a "Grid Tariff Trends" chart that shows hourly/daily tariff_rate from the mock API.
+   - Add KPI cards: "Current Tariff", "Peak Tariff", "Avg Tariff".
+   - Allow anomaly alerts if household load > max_load (critical).
+
+7. **UI Enhancements**
+   - Apply Apple-inspired design:
+     - Glassmorphism cards with blur + neon glow.
+     - Bold headlines, animated KPI numbers.
+     - Smooth animations with Framer Motion.
+     - Responsive layout for all pages.
+
+Deliverable:
+- Working full-stack app with auto-generated dummy data (appliance readings, grid tariff, battery logs).
+- All errors fixed.
+- Live updating graphs + anomaly detection + premium Apple-style UI.

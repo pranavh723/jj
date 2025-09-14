@@ -23,6 +23,7 @@ import {
   Clock,
   Settings
 } from 'lucide-react';
+import { SimulationToggle } from '@/components/SimulationToggle';
 import { apiRequest } from '@/lib/queryClient';
 import type { BatteryLog, Household, InsertBatteryLog } from '@shared/schema';
 import { insertBatteryLogSchema } from '@shared/schema';
@@ -376,6 +377,15 @@ export default function Battery() {
           </CardContent>
         </Card>
       )}
+
+      {/* Simulation Toggle */}
+      <SimulationToggle 
+        type="battery"
+        onDataGenerated={() => {
+          // Refresh the data when new simulated data is generated
+          refetchLogs();
+        }}
+      />
 
       {/* Battery Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

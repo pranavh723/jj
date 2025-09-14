@@ -16,12 +16,12 @@ export function RenewableChart({ solarPercentage, gridPercentage }: RenewableCha
     {
       name: 'Solar Energy',
       value: solarPercentage,
-      color: 'var(--chart-1)'
+      color: '#F59E0B'
     },
     {
       name: 'Grid Energy',
       value: gridPercentage,
-      color: 'var(--chart-2)'
+      color: '#EF4444'
     }
   ];
 

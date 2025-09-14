@@ -29,6 +29,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SimulationToggle } from '@/components/SimulationToggle';
 
 export default function Analytics() {
   const { toast } = useToast();
@@ -283,6 +284,15 @@ export default function Analytics() {
           </Button>
         </div>
       </div>
+
+      {/* Simulation Toggle */}
+      <SimulationToggle 
+        type="analytics"
+        onDataGenerated={() => {
+          // Refresh the data when new simulated data is generated
+          refetchDashboard();
+        }}
+      />
 
       {isDashboardLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

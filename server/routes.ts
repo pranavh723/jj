@@ -897,6 +897,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mock Data APIs for simulation
+  app.get("/api/mock/appliance", async (req, res) => {
+    try {
+      const applianceNames = [
+        'Refrigerator', 'Air Conditioner', 'Washing Machine', 'Dishwasher', 
+        'Microwave', 'Water Heater', 'Television', 'Computer', 'LED Lights', 
+        'Ceiling Fan', 'Electric Oven', 'Toaster', 'Coffee Maker', 'Vacuum Cleaner'
+      ];
+      
+      const randomAppliance = applianceNames[Math.floor(Math.random() * applianceNames.length)];
+      
+      // Different power ranges for different appliances
+      let powerRange;
+      if (randomAppliance === 'Air Conditioner') powerRange = [1200, 2500];
+      else if (randomAppliance === 'Water Heater') powerRange = [2000, 3000];
+      else if (randomAppliance === 'Refrigerator') powerRange = [100, 300];
+      else if (randomAppliance === 'Washing Machine') powerRange = [500, 1500];
+      else if (randomAppliance === 'Microwave') powerRange = [700, 1200];
+      else if (randomAppliance === 'Television') powerRange = [100, 250];
+      else if (randomAppliance === 'LED Lights') powerRange = [10, 50];
+      else powerRange = [50, 800];
+      
+      const powerWatts = Math.round(powerRange[0] + Math.random() * (powerRange[1] - powerRange[0]));
+      
+      const mockReading = {
+        applianceName: randomAppliance,
+        powerWatts: powerWatts,
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json(mockReading);
+    } catch (error) {
+      console.error('Mock appliance API error:', error);
+      res.status(500).json({ message: 'Failed to generate mock appliance data' });
+    }
+  });
+
+  app.get("/api/mock/battery", async (req, res) => {
+    try {
+      // Simulate realistic battery charge/discharge patterns
+      const currentHour = new Date().getHours();
+      
+      // Simulate daily charge patterns
+      let socPercent, dodPercent;
+      
+      if (currentHour >= 6 && currentHour <= 18) {
+        // Daytime: battery charging from solar
+        socPercent = 60 + Math.random() * 35; // 60-95%
+        dodPercent = Math.max(0, 100 - socPercent - Math.random() * 20); // Lower DoD during charge
+      } else {
+        // Nighttime: battery discharging
+        socPercent = 20 + Math.random() * 60; // 20-80%
+        dodPercent = 30 + Math.random() * 50; // 30-80% higher DoD during discharge
+      }
+      
+      const cycleCount = Math.floor(100 + Math.random() * 1000); // 100-1100 cycles
+      
+      const mockBatteryLog = {
+        socPercent: Math.round(socPercent * 10) / 10,
+        dodPercent: Math.round(dodPercent * 10) / 10,
+        cycleCount: cycleCount,
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json(mockBatteryLog);
+    } catch (error) {
+      console.error('Mock battery API error:', error);
+      res.status(500).json({ message: 'Failed to generate mock battery data' });
+    }
+  });
+
+  app.get("/api/mock/grid", async (req, res) => {
+    try {
+      const currentHour = new Date().getHours();
+      
+      // Simulate time-of-use tariff rates (India grid pricing)
+      let tariffRate, maxLoad;
+      
+      if (currentHour >= 18 && currentHour <= 22) {
+        // Peak hours: 6 PM - 10 PM
+        tariffRate = 8.5 + Math.random() * 2; // ₹8.5-10.5/kWh
+        maxLoad = 3.5 + Math.random() * 1.5; // 3.5-5 kW
+      } else if (currentHour >= 22 || currentHour <= 6) {
+        // Off-peak hours: 10 PM - 6 AM
+        tariffRate = 3.5 + Math.random() * 1.5; // ₹3.5-5/kWh
+        maxLoad = 2.0 + Math.random() * 1; // 2-3 kW
+      } else {
+        // Normal hours: 6 AM - 6 PM
+        tariffRate = 5.5 + Math.random() * 2; // ₹5.5-7.5/kWh
+        maxLoad = 4.0 + Math.random() * 2; // 4-6 kW
+      }
+      
+      const mockGridData = {
+        timestamp: new Date().toISOString(),
+        tariffRate: Math.round(tariffRate * 100) / 100,
+        maxLoad: Math.round(maxLoad * 100) / 100,
+        currentHour: currentHour,
+        tariffType: currentHour >= 18 && currentHour <= 22 ? 'Peak' : 
+                   (currentHour >= 22 || currentHour <= 6) ? 'Off-Peak' : 'Normal'
+      };
+      
+      res.json(mockGridData);
+    } catch (error) {
+      console.error('Mock grid API error:', error);
+      res.status(500).json({ message: 'Failed to generate mock grid data' });
+    }
+  });
+
   // Manual scheduler triggers (for debugging/immediate data population)
   app.post("/api/scheduler/run-hourly", authenticateToken, async (req, res) => {
     try {
