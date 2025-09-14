@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { weatherService } from "../services/weather";
 import { solarService } from "../services/solar";
 import { recommendationService } from "../services/recommendations";
+import { normalizeApplianceName } from "@shared/applianceUtils";
 import type { Household } from "@shared/schema";
 
 export class SchedulerService {
