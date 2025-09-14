@@ -109,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const householdData = insertHouseholdSchema.parse({
         ...req.body,
-        userId: req.user.userId
+        userId: (req as AuthenticatedRequest).user.userId
       });
       
       const household = await storage.createHousehold(householdData);
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/households", authenticateToken, async (req, res) => {
     try {
-      const households = await storage.getHouseholdsByUserId(req.user.userId);
+      const households = await storage.getHouseholdsByUserId((req as AuthenticatedRequest).user.userId);
       res.json(households);
     } catch (error) {
       console.error('Get households error:', error);
@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/households/:id", authenticateToken, async (req, res) => {
     try {
       const household = await storage.getHousehold(req.params.id);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(404).json({ message: 'Household not found' });
       }
       res.json(household);
@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify household belongs to user
       const household = await storage.getHousehold(deviceData.householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify household belongs to user
       const household = await storage.getHousehold(householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -192,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify household belongs to user
       const household = await storage.getHousehold(device.householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify household belongs to user
       const household = await storage.getHousehold(householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -251,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify household belongs to user
       const household = await storage.getHousehold(householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -284,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify household belongs to user
       const household = await storage.getHousehold(householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -305,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify household belongs to user
       const household = await storage.getHousehold(readingData.householdId);
-      if (!household || household.userId !== req.user.userId) {
+      if (!household || household.userId !== (req as AuthenticatedRequest).user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
       
@@ -351,18 +351,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/readings", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
-      const data = insertApplianceReadingSchema.parse({
-        ...req.body,
+      const data = insertApplianceReadingSchema.omit({ userId: true }).parse(req.body);
+      const fullData = {
+        ...data,
         userId: user.userId
-      });
+      };
       
-      const reading = await storage.createApplianceReading(data);
+      const reading = await storage.createApplianceReading(fullData);
       
       // Check for anomalies using moving average and standard deviation
       const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const recentReadings = await storage.getApplianceReadings(user.userId, last24Hours, new Date());
       
-      const applianceReadings = recentReadings.filter(r => r.applianceName === data.applianceName);
+      const applianceReadings = recentReadings.filter(r => r.applianceName === fullData.applianceName);
       if (applianceReadings.length > 5) {
         const powers = applianceReadings.map(r => r.powerWatts);
         const mean = powers.reduce((sum, p) => sum + p, 0) / powers.length;
@@ -371,9 +372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const threshold = mean + 2 * stdDev;
         
-        if (data.powerWatts > threshold) {
+        if (fullData.powerWatts > threshold) {
           let severity = 'warning';
-          if (data.powerWatts > mean + 3 * stdDev) severity = 'critical';
+          if (fullData.powerWatts > mean + 3 * stdDev) severity = 'critical';
           
           await storage.createApplianceAnomaly({
             applianceReadingId: reading.id,
@@ -431,8 +432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate leaderboard of top sellers
       const sellerStats = new Map();
       [...trades, ...simulatedTrades].forEach(trade => {
-        const current = sellerStats.get(trade.sellerId) || 0;
-        sellerStats.set(trade.sellerId, current + trade.energyTradedKwh);
+        const sellerId = 'sellerId' in trade ? trade.sellerId : trade.sellerHouseholdId;
+        const current = sellerStats.get(sellerId) || 0;
+        sellerStats.set(sellerId, current + trade.energyTradedKwh);
       });
       
       const topSellers = Array.from(sellerStats.entries())

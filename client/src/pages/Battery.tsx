@@ -175,7 +175,6 @@ export default function Battery() {
 
     addLogMutation.mutate({
       ...data,
-      userId: user.id,
       timestamp: new Date(),
     });
   };

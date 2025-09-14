@@ -82,7 +82,6 @@ export default function Appliances() {
     addReadingMutation.mutate({
       ...data,
       timestamp: new Date(),
-      userId: user?.id || '',
     });
   };
 
