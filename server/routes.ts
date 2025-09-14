@@ -9,7 +9,8 @@ import { schedulerService } from "./jobs/scheduler";
 import { 
   insertUserSchema, insertHouseholdSchema, insertDeviceSchema, 
   insertMeterReadingSchema, insertApplianceReadingSchema, insertApplianceAnomalySchema,
-  insertHouseholdEnergySchema, insertEnergyTradeSchema, insertBatteryLogSchema
+  insertHouseholdEnergySchema, insertEnergyTradeSchema, insertBatteryLogSchema,
+  type InsertApplianceAnomaly
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -45,6 +46,169 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
   (req as AuthenticatedRequest).user = payload;
   next();
 };
+
+// Enhanced AI-powered anomaly detection service
+async function detectApplianceAnomalies(
+  userId: string, 
+  currentReading: { applianceName: string; powerWatts: number; timestamp: Date }, 
+  readingId: string
+): Promise<Array<Omit<InsertApplianceAnomaly, 'id'>>> {
+  const anomalies: Array<Omit<InsertApplianceAnomaly, 'id'>> = [];
+  
+  // Get historical data for the appliance (last 7 days)
+  const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const allReadings = await storage.getApplianceReadings(userId, last7Days, new Date());
+  const applianceReadings = allReadings.filter(r => r.applianceName === currentReading.applianceName);
+  
+  if (applianceReadings.length < 3) {
+    // Not enough data for analysis
+    return anomalies;
+  }
+  
+  const powers = applianceReadings.map(r => r.powerWatts);
+  
+  // Statistical baseline calculation
+  const mean = powers.reduce((sum, p) => sum + p, 0) / powers.length;
+  const variance = powers.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / powers.length;
+  const stdDev = Math.sqrt(variance);
+  
+  // Algorithm 1: Enhanced Power Spike Detection
+  const spikeThreshold = mean + 2 * stdDev;
+  const criticalSpikeThreshold = mean + 3 * stdDev;
+  
+  if (currentReading.powerWatts > criticalSpikeThreshold) {
+    anomalies.push({
+      applianceReadingId: readingId,
+      timestamp: new Date(),
+      anomalyType: 'power_spike_critical',
+      severity: 'critical'
+    });
+  } else if (currentReading.powerWatts > spikeThreshold) {
+    anomalies.push({
+      applianceReadingId: readingId,
+      timestamp: new Date(),
+      anomalyType: 'power_spike',
+      severity: 'warning'
+    });
+  }
+  
+  // Algorithm 2: Power Drop Detection
+  const dropThreshold = Math.max(0, mean - 2 * stdDev);
+  const criticalDropThreshold = Math.max(0, mean - 3 * stdDev);
+  
+  if (currentReading.powerWatts < criticalDropThreshold && mean > 50) {
+    anomalies.push({
+      applianceReadingId: readingId,
+      timestamp: new Date(),
+      anomalyType: 'power_drop_critical',
+      severity: 'critical'
+    });
+  } else if (currentReading.powerWatts < dropThreshold && mean > 30) {
+    anomalies.push({
+      applianceReadingId: readingId,
+      timestamp: new Date(),
+      anomalyType: 'power_drop',
+      severity: 'warning'
+    });
+  }
+  
+  // Algorithm 3: Efficiency Anomaly Detection
+  const recentReadings = applianceReadings.filter(r => new Date(r.timestamp) > last24Hours);
+  if (recentReadings.length >= 5) {
+    const recentPowers = recentReadings.map(r => r.powerWatts);
+    const recentMean = recentPowers.reduce((sum, p) => sum + p, 0) / recentPowers.length;
+    const efficiencyRatio = recentMean / mean;
+    
+    if (efficiencyRatio > 1.5 && mean > 20) {
+      anomalies.push({
+        applianceReadingId: readingId,
+        timestamp: new Date(),
+        anomalyType: 'efficiency_degradation',
+        severity: 'warning'
+      });
+    } else if (efficiencyRatio > 2.0 && mean > 20) {
+      anomalies.push({
+        applianceReadingId: readingId,
+        timestamp: new Date(),
+        anomalyType: 'efficiency_failure',
+        severity: 'critical'
+      });
+    }
+  }
+  
+  // Algorithm 4: Time-based Pattern Anomaly
+  const currentHour = currentReading.timestamp.getHours();
+  const currentDayOfWeek = currentReading.timestamp.getDay();
+  
+  const sameTimeReadings = applianceReadings.filter(r => {
+    const readingDate = new Date(r.timestamp);
+    const hourDiff = Math.abs(readingDate.getHours() - currentHour);
+    const dayDiff = Math.abs(readingDate.getDay() - currentDayOfWeek);
+    return hourDiff <= 1 && dayDiff === 0;
+  });
+  
+  if (sameTimeReadings.length >= 3) {
+    const sameTimePowers = sameTimeReadings.map(r => r.powerWatts);
+    const sameTimeMean = sameTimePowers.reduce((sum, p) => sum + p, 0) / sameTimePowers.length;
+    const sameTimeStdDev = Math.sqrt(
+      sameTimePowers.reduce((sum, p) => sum + Math.pow(p - sameTimeMean, 2), 0) / sameTimePowers.length
+    );
+    
+    if (Math.abs(currentReading.powerWatts - sameTimeMean) > 2 * sameTimeStdDev && sameTimeMean > 10) {
+      anomalies.push({
+        applianceReadingId: readingId,
+        timestamp: new Date(),
+        anomalyType: 'time_pattern_anomaly',
+        severity: 'warning'
+      });
+    }
+  }
+  
+  // Algorithm 5: Zero Power Anomaly (for always-on appliances)
+  const alwaysOnAppliances = ['refrigerator', 'fridge', 'freezer', 'security system', 'router', 'modem'];
+  const isAlwaysOn = alwaysOnAppliances.some(appliance => 
+    currentReading.applianceName.toLowerCase().includes(appliance)
+  );
+  
+  if (isAlwaysOn && currentReading.powerWatts < 5 && mean > 20) {
+    anomalies.push({
+      applianceReadingId: readingId,
+      timestamp: new Date(),
+      anomalyType: 'unexpected_shutdown',
+      severity: 'critical'
+    });
+  }
+  
+  // Algorithm 6: Cycling Anomaly Detection
+  if (applianceReadings.length >= 10) {
+    const last2Hours = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const recent2HourReadings = applianceReadings
+      .filter(r => new Date(r.timestamp) > last2Hours)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      
+    if (recent2HourReadings.length >= 6) {
+      let significantChanges = 0;
+      for (let i = 1; i < recent2HourReadings.length; i++) {
+        const powerDiff = Math.abs(recent2HourReadings[i].powerWatts - recent2HourReadings[i-1].powerWatts);
+        if (powerDiff > mean * 0.3) {
+          significantChanges++;
+        }
+      }
+      
+      if (significantChanges >= 5) {
+        anomalies.push({
+          applianceReadingId: readingId,
+          timestamp: new Date(),
+          anomalyType: 'rapid_cycling',
+          severity: 'warning'
+        });
+      }
+    }
+  }
+  
+  return anomalies;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -419,7 +583,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/readings", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
-      const data = insertApplianceReadingSchema.omit({ userId: true }).parse(req.body);
+      const data = insertApplianceReadingSchema.omit({ userId: true }).extend({
+        powerWatts: z.coerce.number(),
+        timestamp: z.coerce.date()
+      }).parse(req.body);
       const fullData = {
         ...data,
         userId: user.userId
@@ -427,31 +594,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const reading = await storage.createApplianceReading(fullData);
       
-      // Check for anomalies using moving average and standard deviation
-      const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const recentReadings = await storage.getApplianceReadings(user.userId, last24Hours, new Date());
+      // Enhanced AI anomaly detection with multiple rule-based algorithms
+      const anomalies = await detectApplianceAnomalies(user.userId, fullData, reading.id);
       
-      const applianceReadings = recentReadings.filter(r => r.applianceName === fullData.applianceName);
-      if (applianceReadings.length > 5) {
-        const powers = applianceReadings.map(r => r.powerWatts);
-        const mean = powers.reduce((sum, p) => sum + p, 0) / powers.length;
-        const variance = powers.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / powers.length;
-        const stdDev = Math.sqrt(variance);
-        
-        const threshold = mean + 2 * stdDev;
-        
-        if (fullData.powerWatts > threshold) {
-          let severity = 'warning';
-          if (fullData.powerWatts > mean + 3 * stdDev) severity = 'critical';
-          
-          await storage.createApplianceAnomaly({
-            applianceReadingId: reading.id,
-            timestamp: new Date(),
-            anomalyType: 'power_spike',
-            severity
-          });
+      // Store all detected anomalies
+      if (anomalies.length > 0) {
+        console.log(`Detected ${anomalies.length} anomalies for ${fullData.applianceName}: ${anomalies.map(a => a.anomalyType).join(', ')}`);
+        for (const anomaly of anomalies) {
+          await storage.createApplianceAnomaly(anomaly);
         }
       }
+      
+      console.log(`Appliance reading added: ${fullData.applianceName} - ${fullData.powerWatts}W`);
+      
+      res.json({ reading, anomaliesDetected: anomalies.length });
       
       res.json(reading);
     } catch (error) {
@@ -592,13 +748,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = (req as AuthenticatedRequest).user;
       const userId = user.userId;
       
-      // Validate request body and set userId server-side
-      const validatedData = insertBatteryLogSchema.omit({ userId: true }).parse(req.body);
+      // Validate request body and set userId server-side  
+      const validatedData = insertBatteryLogSchema.omit({ userId: true }).extend({
+        chargeLevel: z.coerce.number(),
+        timestamp: z.coerce.date()
+      }).parse(req.body);
       
       const batteryLog = await storage.createBatteryLog({
         ...validatedData,
-        userId,
-        timestamp: new Date(validatedData.timestamp),
+        userId
       });
       
       res.status(201).json(batteryLog);
