@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/login', { email, password });
+      const response = await apiRequest('/api/auth/login', 'POST', { email, password });
       const data = await response.json();
       
       setToken(data.token);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, name: string) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/register', { email, password, name });
+      const response = await apiRequest('/api/auth/register', 'POST', { email, password, name });
       const data = await response.json();
       
       setToken(data.token);

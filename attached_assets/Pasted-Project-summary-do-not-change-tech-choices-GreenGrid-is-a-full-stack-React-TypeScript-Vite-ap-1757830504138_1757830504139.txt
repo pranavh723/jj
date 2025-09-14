@@ -1,0 +1,309 @@
+Project summary (do not change tech choices):
+GreenGrid is a full-stack React + TypeScript + Vite app (frontend) + Express + TypeScript backend with Drizzle ORM + PostgreSQL. UI uses Tailwind + shadcn/ui + Radix primitives + Recharts. State uses TanStack Query. Use Framer Motion for animations if requested. Keep all TypeScript types and Zod validation where applicable.
+
+Task: Fix multiple runtime bugs and add/finish MVP features. Then restyle the app into a premium Apple-inspired UI (glassmorphism, neon accents). Produce code, migrations, tests, and a README update with run instructions.
+
+PRIORITY (Do these in order)
+
+Fix broken fetch calls and backend endpoints so the frontend can POST/GET correctly.
+
+Fix charts (colors, visibility) and make analytics dashboards show data.
+
+Fix appliance add flow and battery log add flow. Ensure add-schedule button in battery tab works.
+
+Fix solar generation forecast + weather details in forecasting tab.
+
+Implement/complete MVP versions of:
+
+AI Appliance Fault / Anomaly Detector (simple rule-based MVP)
+
+Energy Marketplace Simulation (mock trades)
+
+Battery Health & Scheduling Simulator (mock SoC/alerts)
+
+Restyle UI to Apple-inspired theme (glassmorphism, neon accents, Framer Motion animations) — keep functionality first, then polish animations.
+
+BUGS / ISSUES TO FIX (explicit)
+
+A. Fetch runtime error
+
+Observed error:
+
+[plugin:runtime-error-plugin] Failed to execute 'fetch' on 'Window': '/api/readings' is not a valid HTTP method.
+/client/src/lib/queryClient.ts:29:21
+
+
+Likely cause: fetch(url, { method, headers, ... }) where method variable incorrectly contains url or something else. Fix queryClient helper to accept (url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELETE', body?: any, headers?: any}) and call fetch(url, { method: options.method || 'GET', headers, body: JSON.stringify(body) }). Ensure all callers pass method as string ('POST') and not the URL.
+
+Add types & Zod validation for request bodies.
+
+Add proper error handling and return JSON with res.status(...).json({...}) from Express.
+
+B. Add appliance / battery logs failing
+
+Ensure backend endpoints exist and accept POST /api/readings and POST /api/battery (or whatever routes frontend expects).
+
+If frontend expects GET /api/battery only, update frontend to POST for creation and GET for fetching. Standardize routes:
+
+POST /api/readings — create reading
+
+GET /api/readings?userId=... — get readings
+
+GET /api/anomalies?userId=... — get anomalies
+
+POST /api/battery/log — add battery log
+
+GET /api/battery?userId=... — fetch battery status/logs
+
+GET /api/forecast/solar?location=... — solar forecast
+
+GET /api/weather?lat=...&lon=... — weather details
+
+GET /api/marketplace — recent trades
+
+POST /api/marketplace/simulate — trigger simulated trades
+
+C. Charts black & white / no data
+
+Recharts charts are rendering monochrome/black-white due to CSS global rules or default palettes overridden. Fix by:
+
+Setting explicit stroke and fill props for each Recharts component in code (use theme variables). Example colors: use CSS variables --neon-blue, --neon-orange, --neon-red. Don’t rely on default palettes.
+
+Ensure svg { filter: none; } and remove CSS rules that desaturate or apply filter: grayscale.
+
+Confirm data arrays passed to charts are non-empty; add fallback UI when no data.
+
+Add theme object or utility chartColors = ['var(--neon-blue)','var(--neon-red)','var(--neon-orange)'] and use consistently.
+
+Ensure charts re-render after data load — use TanStack Query and React keys correctly.
+
+D. Forecasting / weather
+
+Implement server-side wrappers:
+
+GET /api/weather?lat=...&lon=... → call Open-Meteo (or mock if no API key), return hourly/daily arrays with temp, cloudcover, solar_radiation.
+
+GET /api/forecast/solar?lat=...&lon=...&capacityKw=... → calculate estimated PV output using simplified model (irradiance * capacity * efficiency). If external NREL API available, provide optional flow.
+
+Frontend: ensure forecasting tab fetches these endpoints and populates chart. If data missing, show clear placeholder and a “Retry” button.
+
+E. Analytics tab fixes
+
+Ensure all API endpoints used by analytics are implemented and return correctly shaped JSON.
+
+If analytics relies on aggregated values, add backend aggregates:
+
+/api/analytics/overview?userId=... → returns { todayKwh, monthKwh, renewableKwh, gridKwh, estimatedBill }
+
+/api/analytics/trends?userId=...&period=30 → returns array for chart.
+
+Ensure frontend uses TanStack Query to fetch and display those values. Add skeleton loaders.
+
+NEW MVP FEATURES (implementation details)
+
+1) AI Appliance Fault / Anomaly Detector — MVP logic
+
+Backend:
+
+Add job or endpoint to compute anomalies from recent readings:
+
+Baseline = rolling mean of last N readings (e.g., 7 days average at same hour).
+
+If current > baseline * 1.5 → severity = 'warning'; > 2.0 → 'critical'.
+
+Endpoint: GET /api/anomalies?userId=... returns { appliance, timestamp, reading, baseline, severity, message }.
+
+Frontend:
+
+Appliance tab shows list and a detail line chart (power vs time) and colored badge.
+
+2) Energy Marketplace Simulation — MVP
+
+Backend:
+
+Endpoint POST /api/marketplace/simulate generates random household_energy rows for community, computes surplus, and randomly matches buyers/sellers; stores energy_trades.
+
+GET /api/marketplace returns the last 50 trades.
+
+Frontend:
+
+Marketplace page lists trades, top 3 sellers (aggregate), and a simple pie chart of traded vs local consumption.
+
+3) Battery Health & Scheduling Simulator — MVP
+
+Backend:
+
+GET /api/battery?userId=... returns mock daily logs for last 30 days: { date, socPercent, dodPercent, cycleCount }.
+
+POST /api/battery/log to add a log (used by add battery log flow).
+
+Rule: If dodPercent > 80 → include alert in response.
+
+Frontend:
+
+Battery tab shows radial gauge (SoC), line chart (SoC history), add-schedule form that posts POST /api/battery/schedule (simple endpoint that returns schedule summary).
+
+Add-schedule button should be wired to call the correct endpoint with proper method.
+
+UI / Design Rebuild (Apple-inspired MVP)
+
+Design goals (MVP):
+
+Glassmorphism cards with blurred background and neon borders.
+
+Minimal black/white base with neon accents: --neon-blue: #00C2FF, --neon-orange: #FF7A00, --neon-red: #FF3B30.
+
+Big bold headlines, animated KPI numbers (count-up).
+
+Smooth page transitions (Framer Motion) and hover lift on cards.
+
+Implement the following UI changes (MVP scope):
+
+Create a Tailwind config with design tokens and CSS variables for neon colors and glass effects.
+
+Create a shared Card component (shadcn/ui style) with glass effect:
+
+backdrop-filter: blur(8px); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.6); border-image: linear-gradient(...) 1;
+
+Dashboard page:
+
+Sidebar (compact icons + labels) and main area with KPI cards + energy overview chart (use Recharts Line + Area).
+
+KPI numbers animate with simple useEffect count-up or Framer Motion.
+
+Analytics & Forecasting pages:
+
+Use neon color palette for chart strokes/fills via CSS variables.
+
+Add a toggle dark/light; default to dark mode.
+
+Add command palette skeleton (Ctrl/Cmd+K) — simple modal with quick links.
+
+Accessibility & performance:
+
+Keep contrast readable and ensure components are keyboard-navigable.
+
+Lazy-load heavy charts.
+
+DATABASE & DRIZZLE MIGRATIONS (provide SQL / Drizzle schema)
+
+appliance_readings (id, user_id, appliance_name, timestamp, power_watts)
+
+appliance_anomalies (id, reading_id, timestamp, anomaly_type, severity, message)
+
+marketplace_trades (id, seller_id, buyer_id, energy_kwh, timestamp)
+
+battery_logs (id, user_id, timestamp, soc_percent, dod_percent, cycle_count, alert)
+
+household_energy (household_id, timestamp, generation_kwh, consumption_kwh) — optional
+
+Provide Drizzle migration files (TypeScript) to create these tables.
+
+API CONTRACTS & EXAMPLE payloads
+
+POST /api/readings
+
+{
+  "userId": 1,
+  "appliance": "Fridge",
+  "timestamp": "2025-09-14T10:00:00Z",
+  "powerWatts": 140
+}
+
+
+GET /api/anomalies?userId=1
+
+[{
+  "appliance": "Fridge",
+  "timestamp": "2025-09-14T10:00:00Z",
+  "reading": 140,
+  "baseline": 80,
+  "severity": "warning",
+  "message": "40% higher than baseline"
+}]
+
+
+POST /api/battery/log
+
+{
+  "userId": 1,
+  "timestamp": "2025-09-14",
+  "socPercent": 45,
+  "dodPercent": 55,
+  "cycleCount": 213
+}
+
+
+GET /api/marketplace
+
+[
+  { "sellerId": 3, "buyerId": 7, "energyKwh": 2.5, "timestamp": "2025-09-14T10:20:00Z" }
+]
+
+Frontend expectations / fixes
+
+Ensure lib/queryClient.ts helper has correct signature and is used uniformly.
+
+Replace any incorrect fetch('/api/readings') usages that pass URL as method. Confirm all fetch calls use proper method strings and bodies are JSON.stringify.
+
+Wrap fetch calls in TanStack Query hooks and show error toasts on failure.
+
+For charts color fix:
+
+Inject CSS variables in global :root and reference them in Recharts props.
+
+Example Recharts usage:
+
+<Line dataKey="value" stroke="var(--neon-blue)" strokeWidth={2} />
+<Area dataKey="value" fill="url(#gradientBlue)" />
+
+
+Add gradients and glow via SVG defs.
+
+Testing & Acceptance Criteria
+
+All pages compile and run with npm run dev (frontend) and npm run start (backend) or a single dev script that runs both.
+
+Reproduce previously reported errors — they must be gone:
+
+No runtime fetch error about invalid HTTP method.
+
+Adding an appliance successfully posts to backend and shows new reading in UI.
+
+Adding battery log posts and updates battery gauge.
+
+Add-schedule button triggers a request and shows returned schedule summary.
+
+Charts render in color (neon palette) and show data when backend returns values.
+
+Forecasting tab shows weather + solar forecast charts with mock or real API data.
+
+Marketplace page shows simulated trades after clicking “Simulate” (or on load).
+
+MVP anomaly detector shows at least one flagged anomaly in demo data.
+
+Deliverables from Replit.ai
+
+Updated backend code (Express TypeScript) with new routes, Drizzle migrations, and sample seed/mock data scripts.
+
+Updated frontend React TypeScript code: corrected queryClient, components for Anomalies / Marketplace / Battery, styled with Tailwind + shadcn/ui, Recharts charts fixed and colored, Framer Motion animations where reasonable.
+
+A README.md with:
+
+How to run locally (env vars, DB migrations, dev scripts).
+
+Sample requests to test endpoints (curl examples).
+
+Where mock data is seeded and how to re-run simulation.
+
+A short test script or Postman collection for verifying endpoints.
+
+A single git branch / PR with changes and a short summary of fixes.
+
+Extra notes (do not change):
+
+Keep all new code TypeScript-first and add Zod validation for API payloads.
+
+Use process.env.OPEN_METEO_URL etc for weather/forecast provider; if env var missing, fall back to a server-side mock generator.
+
+Keep UI changes progressive — first fix functionality, then apply glassmorphism & neon styling. Don’t break existing pages.

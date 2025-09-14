@@ -11,8 +11,8 @@ export function getAuthToken(): string | null {
 }
 
 export async function apiRequest(
-  method: string,
   url: string,
+  method: string = 'GET',
   data?: unknown
 ): Promise<Response> {
   const token = getAuthToken();
@@ -43,79 +43,79 @@ export async function apiRequest(
 export const api = {
   // Auth
   async login(email: string, password: string) {
-    const response = await apiRequest('POST', '/api/auth/login', { email, password });
+    const response = await apiRequest('/api/auth/login', 'POST', { email, password });
     return response.json();
   },
 
   async register(email: string, password: string, name: string) {
-    const response = await apiRequest('POST', '/api/auth/register', { email, password, name });
+    const response = await apiRequest('/api/auth/register', 'POST', { email, password, name });
     return response.json();
   },
 
   // Households
   async createHousehold(data: any) {
-    const response = await apiRequest('POST', '/api/households', data);
+    const response = await apiRequest('/api/households', 'POST', data);
     return response.json();
   },
 
   async getHouseholds() {
-    const response = await apiRequest('GET', '/api/households');
+    const response = await apiRequest('/api/households');
     return response.json();
   },
 
   async getHousehold(id: string) {
-    const response = await apiRequest('GET', `/api/households/${id}`);
+    const response = await apiRequest(`/api/households/${id}`);
     return response.json();
   },
 
   // Devices
   async createDevice(data: any) {
-    const response = await apiRequest('POST', '/api/devices', data);
+    const response = await apiRequest('/api/devices', 'POST', data);
     return response.json();
   },
 
   async getDevices(householdId: string) {
-    const response = await apiRequest('GET', `/api/devices?household_id=${householdId}`);
+    const response = await apiRequest(`/api/devices?household_id=${householdId}`);
     return response.json();
   },
 
   async deleteDevice(id: string) {
-    const response = await apiRequest('DELETE', `/api/devices/${id}`);
+    const response = await apiRequest(`/api/devices/${id}`, 'DELETE');
     return response.json();
   },
 
   // Dashboard
   async getDashboardData(householdId: string) {
-    const response = await apiRequest('GET', `/api/dashboard?household_id=${householdId}`);
+    const response = await apiRequest(`/api/dashboard?household_id=${householdId}`);
     return response.json();
   },
 
   // Forecasts
   async getForecasts(householdId: string) {
-    const response = await apiRequest('GET', `/api/forecasts?household_id=${householdId}`);
+    const response = await apiRequest(`/api/forecasts?household_id=${householdId}`);
     return response.json();
   },
 
   // Recommendations
   async generateRecommendations(householdId: string) {
-    const response = await apiRequest('POST', `/api/recommendations/generate?household_id=${householdId}`);
+    const response = await apiRequest(`/api/recommendations/generate?household_id=${householdId}`, 'POST');
     return response.json();
   },
 
   // Communities
   async getCommunities() {
-    const response = await apiRequest('GET', '/api/communities');
+    const response = await apiRequest('/api/communities');
     return response.json();
   },
 
   async getLeaderboard(communityId: string) {
-    const response = await apiRequest('GET', `/api/community/${communityId}/leaderboard`);
+    const response = await apiRequest(`/api/community/${communityId}/leaderboard`);
     return response.json();
   },
 
   // Meter readings
   async createMeterReading(data: any) {
-    const response = await apiRequest('POST', '/api/meter-readings', data);
+    const response = await apiRequest('/api/meter-readings', 'POST', data);
     return response.json();
   },
 };
