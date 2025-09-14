@@ -621,6 +621,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/readings", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      // Get readings from the last 30 days
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const readings = await storage.getApplianceReadings(user.userId, startTime, endTime);
+      res.json(readings);
+    } catch (error) {
+      console.error('Get readings error:', error);
+      res.status(500).json({ message: 'Failed to fetch readings' });
+    }
+  });
+
   app.get("/api/anomalies", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
@@ -754,20 +768,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = user.userId;
       
       // Validate request body and set userId server-side  
-      const validatedData = insertBatteryLogSchema.omit({ userId: true }).extend({
-        chargeLevel: z.coerce.number(),
-        timestamp: z.coerce.date()
+      const validatedData = insertBatteryLogSchema.omit({ userId: true, timestamp: true }).extend({
+        socPercent: z.coerce.number().min(0).max(100),
+        dodPercent: z.coerce.number().min(0).max(100),
+        cycleCount: z.coerce.number().min(0)
       }).parse(req.body);
       
       const batteryLog = await storage.createBatteryLog({
         ...validatedData,
-        userId
+        userId,
+        timestamp: new Date()
       });
       
       res.status(201).json(batteryLog);
     } catch (error) {
       console.error('Create battery log error:', error);
       res.status(500).json({ message: 'Failed to create battery log' });
+    }
+  });
+
+  // Schedule Management Routes
+  app.get("/api/schedule", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      // For now, return mock schedule data
+      const mockSchedules = [
+        {
+          id: '1',
+          user_id: user.userId,
+          start_time: '10:00',
+          end_time: '14:00',
+          action: 'Charge battery during solar peak',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          user_id: user.userId,
+          start_time: '18:00',
+          end_time: '22:00',
+          action: 'Run dishwasher using stored solar',
+          created_at: new Date().toISOString()
+        }
+      ];
+      res.json(mockSchedules);
+    } catch (error) {
+      console.error('Get schedule error:', error);
+      res.status(500).json({ message: 'Failed to fetch schedules' });
+    }
+  });
+
+  app.post("/api/schedule", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const { start_time, end_time, action } = req.body;
+      
+      // Create new schedule (mock implementation)
+      const newSchedule = {
+        id: Date.now().toString(),
+        user_id: user.userId,
+        start_time,
+        end_time,
+        action,
+        created_at: new Date().toISOString()
+      };
+      
+      res.status(201).json(newSchedule);
+    } catch (error) {
+      console.error('Create schedule error:', error);
+      res.status(500).json({ message: 'Failed to create schedule' });
+    }
+  });
+
+  // Grid Data API
+  app.get("/api/grid", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const householdId = req.query.household_id as string;
+      
+      if (!householdId) {
+        return res.status(400).json({ message: 'household_id required' });
+      }
+
+      // Verify household belongs to user
+      const household = await storage.getHousehold(householdId);
+      if (!household || household.userId !== user.userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Generate mock grid data for the last 30 days
+      const gridData = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Simulate daily consumption patterns
+        const baseConsumption = 15 + Math.random() * 10; // 15-25 kWh base
+        const seasonalFactor = 1 + 0.3 * Math.sin((date.getMonth() - 3) * Math.PI / 6); // Summer peak
+        const kWhConsumed = Math.round(baseConsumption * seasonalFactor * 100) / 100;
+        
+        // Different tariff plans
+        const tariffPlans = ['Peak', 'Off-Peak', 'Flat Rate'];
+        const tariffPlan = tariffPlans[i % 3];
+        
+        let tariffRate;
+        switch (tariffPlan) {
+          case 'Peak': tariffRate = 8.5; break;
+          case 'Off-Peak': tariffRate = 4.2; break;
+          default: tariffRate = 6.0;
+        }
+        
+        const cost = Math.round(kWhConsumed * tariffRate * 100) / 100;
+        
+        gridData.push({
+          date: dateStr,
+          household_id: householdId,
+          kWh_consumed: kWhConsumed,
+          tariff_plan: tariffPlan,
+          cost: cost,
+          tariff_rate: tariffRate
+        });
+      }
+      
+      res.json(gridData);
+    } catch (error) {
+      console.error('Get grid data error:', error);
+      res.status(500).json({ message: 'Failed to fetch grid data' });
     }
   });
 

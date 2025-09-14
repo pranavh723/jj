@@ -45,6 +45,17 @@ export default function Appliances() {
     },
   });
 
+  // Fetch appliance readings
+  const { 
+    data: readings = [], 
+    isLoading: isLoadingReadings,
+    error: readingsError,
+    refetch: refetchReadings 
+  } = useQuery<ApplianceReading[]>({
+    queryKey: ['/api/readings'],
+    enabled: !!user,
+  });
+
   // Fetch appliance anomalies
   const { 
     data: anomalies = [], 
@@ -66,6 +77,7 @@ export default function Appliances() {
         title: "Reading Added",
         description: "Appliance power reading has been recorded and analyzed for anomalies.",
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/readings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/anomalies'] });
       form.reset();
     },
@@ -194,6 +206,73 @@ export default function Appliances() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Readings Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <TrendingUp className="w-5 h-5" />
+            <span>Recent Appliance Readings</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {readingsError ? (
+            <div className="text-center py-8 text-destructive">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
+              <p>Failed to load readings</p>
+              <p className="text-sm">{readingsError.message}</p>
+              <Button 
+                onClick={() => refetchReadings()} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                data-testid="button-retry-readings"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : isLoadingReadings ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+              <span>Loading readings...</span>
+            </div>
+          ) : readings.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Cpu className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p>No appliance readings yet.</p>
+              <p className="text-sm">Add your first reading below to start monitoring.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">Appliance</th>
+                    <th className="text-left p-3">Power (W)</th>
+                    <th className="text-left p-3">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {readings.slice(0, 20).map((reading) => (
+                    <tr key={reading.id} className="border-b hover:bg-muted/50">
+                      <td className="p-3 font-medium" data-testid={`reading-name-${reading.id}`}>
+                        {reading.applianceName}
+                      </td>
+                      <td className="p-3" data-testid={`reading-power-${reading.id}`}>
+                        {reading.powerWatts}W
+                      </td>
+                      <td className="p-3 text-muted-foreground" data-testid={`reading-time-${reading.id}`}>
+                        {new Date(reading.timestamp).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add Reading Form */}
       <Card>

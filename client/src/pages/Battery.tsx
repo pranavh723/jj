@@ -68,28 +68,6 @@ export default function Battery() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [schedules, setSchedules] = useState<BatterySchedule[]>([
-    {
-      id: '1',
-      name: 'Morning Charge',
-      startTime: '06:00',
-      endTime: '10:00',
-      targetSoC: 90,
-      maxDoD: 20,
-      enabled: true,
-      daysOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    },
-    {
-      id: '2',
-      name: 'Solar Peak Storage',
-      startTime: '11:00',
-      endTime: '15:00',
-      targetSoC: 95,
-      maxDoD: 10,
-      enabled: true,
-      daysOfWeek: ['Saturday', 'Sunday']
-    }
-  ]);
 
   // Form setup
   const form = useForm({
@@ -136,6 +114,17 @@ export default function Battery() {
     enabled: !!user,
   });
 
+  // Fetch schedules from API
+  const { 
+    data: schedules = [], 
+    isLoading: isLoadingSchedules,
+    error: schedulesError,
+    refetch: refetchSchedules 
+  } = useQuery<any[]>({
+    queryKey: ['/api/schedule'],
+    enabled: !!user,
+  });
+
   // Sort battery logs by timestamp desc to ensure latest entry is first
   const batteryLogs = batteryLogsRaw.sort((a, b) => 
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -163,6 +152,33 @@ export default function Battery() {
     },
   });
 
+  // Add schedule mutation
+  const addScheduleMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const scheduleData = {
+        start_time: data.startTime,
+        end_time: data.endTime,
+        action: `${data.name} - Target SoC: ${data.targetSoC}%, Max DoD: ${data.maxDoD}%`
+      };
+      return apiRequest('/api/schedule', 'POST', scheduleData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Schedule Added",
+        description: "Battery charging schedule has been created.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/schedule'] });
+      scheduleForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add schedule",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: any) => {
     if (!user?.id) {
       toast({
@@ -180,31 +196,23 @@ export default function Battery() {
   };
 
   const onScheduleSubmit = (data: any) => {
-    const newSchedule: BatterySchedule = {
-      id: Date.now().toString(),
-      ...data,
-    };
-    setSchedules(prev => [...prev, newSchedule]);
-    scheduleForm.reset();
+    addScheduleMutation.mutate(data);
+  };
+
+  // Note: These functions are currently display-only since the backend doesn't support update/delete
+  const toggleSchedule = (id: string) => {
     toast({
-      title: "Schedule Added",
-      description: "Battery charging schedule has been created.",
+      title: "Feature Coming Soon",
+      description: "Schedule editing will be available in a future update.",
+      variant: "default",
     });
   };
 
-  const toggleSchedule = (id: string) => {
-    setSchedules(prev => prev.map(schedule => 
-      schedule.id === id 
-        ? { ...schedule, enabled: !schedule.enabled }
-        : schedule
-    ));
-  };
-
   const deleteSchedule = (id: string) => {
-    setSchedules(prev => prev.filter(schedule => schedule.id !== id));
     toast({
-      title: "Schedule Deleted",
-      description: "Battery charging schedule has been removed.",
+      title: "Feature Coming Soon", 
+      description: "Schedule deletion will be available in a future update.",
+      variant: "default",
     });
   };
 
