@@ -141,7 +141,7 @@ export const energyTrades = pgTable("energy_trades", {
 // Battery Health & Scheduling Tables
 export const batteryLogs = pgTable("battery_logs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  householdId: uuid("household_id").references(() => households.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
   timestamp: timestamp("timestamp").notNull(),
   socPercent: real("soc_percent").notNull(), // State of Charge
   dodPercent: real("dod_percent").notNull(), // Depth of Discharge
@@ -155,6 +155,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   communityMembers: many(communityMembers),
   leaderboardSnapshots: many(leaderboardSnapshots),
   applianceReadings: many(applianceReadings),
+  batteryLogs: many(batteryLogs),
 }));
 
 export const householdsRelations = relations(households, ({ one, many }) => ({
@@ -168,7 +169,6 @@ export const householdsRelations = relations(households, ({ one, many }) => ({
   meterReadings: many(meterReadings),
   recommendations: many(recommendations),
   householdEnergy: many(householdEnergy),
-  batteryLogs: many(batteryLogs),
   sellerTrades: many(energyTrades, { relationName: "seller" }),
   buyerTrades: many(energyTrades, { relationName: "buyer" }),
 }));
@@ -245,9 +245,9 @@ export const energyTradesRelations = relations(energyTrades, ({ one }) => ({
 }));
 
 export const batteryLogsRelations = relations(batteryLogs, ({ one }) => ({
-  household: one(households, {
-    fields: [batteryLogs.householdId],
-    references: [households.id],
+  user: one(users, {
+    fields: [batteryLogs.userId],
+    references: [users.id],
   }),
 }));
 
