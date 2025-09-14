@@ -492,8 +492,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error storing mock forecast data:', error);
         }
         
-        weatherData = mockWeatherData;
-        pvData = mockPvData;
+        // Generate IDs for mock data to match the expected types
+        weatherData = mockWeatherData.map(data => ({
+          ...data,
+          id: crypto.randomUUID()
+        }));
+        pvData = mockPvData.map(data => ({
+          ...data,
+          id: crypto.randomUUID()
+        }));
       }
 
       res.json({
@@ -608,8 +615,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Appliance reading added: ${fullData.applianceName} - ${fullData.powerWatts}W`);
       
       res.json({ reading, anomaliesDetected: anomalies.length });
-      
-      res.json(reading);
     } catch (error) {
       console.error('Create appliance reading error:', error);
       res.status(400).json({ message: 'Failed to create appliance reading' });

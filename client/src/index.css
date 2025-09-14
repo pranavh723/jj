@@ -247,7 +247,7 @@ svg {
 }
 
 
-@keyframes pulse-green {
+@keyframes pulse-green-opacity {
   0%, 100% {
     opacity: 1;
   }

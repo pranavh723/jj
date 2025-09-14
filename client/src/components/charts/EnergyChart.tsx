@@ -75,8 +75,8 @@ export function EnergyChart({ data }: EnergyChartProps) {
             strokeWidth={3}
             fill="url(#solarGradient)"
             name="Solar Generation"
-            dot={{ fill: "var(--chart-1)", strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 6, strokeWidth: 2, stroke: "var(--chart-1)" }}
+            dot={false}
+            activeDot={false}
             animationDuration={1500}
             animationEasing="ease-out"
           />
@@ -87,8 +87,8 @@ export function EnergyChart({ data }: EnergyChartProps) {
             strokeWidth={2}
             fill="url(#gridGradient)"
             name="Grid Consumption"
-            dot={{ fill: "var(--chart-2)", strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 6, strokeWidth: 2, stroke: "var(--chart-2)" }}
+            dot={false}
+            activeDot={false}
             animationDuration={1800}
             animationEasing="ease-out"
           />
