@@ -1,0 +1,137 @@
+1️⃣ AI Appliance Fault / Anomaly Detector
+
+Database (PostgreSQL via Drizzle):
+
+Table: appliance_readings
+
+id (PK), user_id (FK), appliance_name, timestamp, power_watts
+
+Table: appliance_anomalies
+
+id (PK), appliance_id (FK), timestamp, anomaly_type, severity
+
+Backend (Express + TypeScript):
+
+API endpoint: POST /api/readings → accepts appliance power data.
+
+API endpoint: GET /api/anomalies → returns anomalies for a household.
+
+Logic:
+
+Use moving average + standard deviation threshold to flag anomalies.
+
+Example: power_watts > mean + 2σ → anomaly.
+
+Severity:
+
+Green → normal
+
+Yellow → warning
+
+Red → critical fault
+
+Frontend (React + Recharts + shadcn/ui):
+
+Dashboard card: “Appliance Health”
+
+Components:
+
+Table → appliance + anomaly type + severity (color-coded with shadcn/ui Badge).
+
+Line Chart → consumption vs anomaly threshold.
+
+Alert Banner if appliance shows repeated anomalies.
+
+2️⃣ Energy Marketplace Simulation
+
+Database (PostgreSQL via Drizzle):
+
+Table: household_energy
+
+id, household_id, timestamp, generation_kwh, consumption_kwh
+
+Table: energy_trades
+
+id, seller_id, buyer_id, energy_traded_kwh, timestamp
+
+Backend (Express):
+
+API endpoint: GET /api/marketplace → returns simulated trades.
+
+Logic:
+
+Calculate surplus = generation - consumption.
+
+If surplus > 0 → seller, if < 0 → buyer.
+
+Match random sellers with buyers.
+
+Save trade records in energy_trades.
+
+Frontend (React):
+
+Community tab → “Energy Marketplace”
+
+Components:
+
+Leaderboard of top sellers (sorted by energy_traded_kwh).
+
+Trade list: seller → buyer → amount → time.
+
+Recharts Pie Chart: Renewable % traded in community.
+
+3️⃣ Battery Health & Scheduling Simulator
+
+Database (PostgreSQL via Drizzle):
+
+Table: battery_logs
+
+id, user_id, timestamp, soc_percent, dod_percent, cycle_count, alert
+
+Backend (Express):
+
+API endpoint: GET /api/battery → returns battery status for household.
+
+Logic:
+
+Simulate charge/discharge based on solar_forecast_kWh + consumption_kWh.
+
+Track State of Charge (SoC), Depth of Discharge (DoD), cycle count.
+
+If DoD > 80% → alert = “Warning”.
+
+Compute recommendations for optimal charging windows.
+
+Frontend (React):
+
+Battery Dashboard Card:
+
+Line Chart → SoC over time.
+
+Gauge Chart → Current SoC % (Recharts RadialBarChart).
+
+Alert Banner if DoD too high or cycles nearing limit.
+
+Text recommendation: “Charge during 10AM–3PM (solar peak).”
+
+🛠 General Instructions
+
+Use Zod schemas for validation on both frontend + backend.
+
+Use TanStack Query for fetching API data.
+
+Styling with Tailwind + shadcn/ui (Card, Badge, Table, Alert, Tabs).
+
+Charts with Recharts (Line, Bar, Pie, Radial).
+
+Generate mock data services for anomaly detection, marketplace trades, and battery logs.
+
+Place new tabs in sidebar:
+
+Dashboard
+
+Appliances (Anomaly Detector)
+
+Marketplace
+
+Battery

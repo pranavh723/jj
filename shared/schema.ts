@@ -104,11 +104,57 @@ export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
   points: integer("points").notNull(),
 });
 
+// AI Appliance Fault/Anomaly Detector Tables
+export const applianceReadings = pgTable("appliance_readings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  applianceName: text("appliance_name").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  powerWatts: real("power_watts").notNull(),
+});
+
+export const applianceAnomalies = pgTable("appliance_anomalies", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  applianceReadingId: uuid("appliance_reading_id").references(() => applianceReadings.id).notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  anomalyType: text("anomaly_type").notNull(),
+  severity: text("severity").notNull(), // 'normal', 'warning', 'critical'
+});
+
+// Energy Marketplace Tables
+export const householdEnergy = pgTable("household_energy", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  householdId: uuid("household_id").references(() => households.id).notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  generationKwh: real("generation_kwh").notNull(),
+  consumptionKwh: real("consumption_kwh").notNull(),
+});
+
+export const energyTrades = pgTable("energy_trades", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sellerHouseholdId: uuid("seller_household_id").references(() => households.id).notNull(),
+  buyerHouseholdId: uuid("buyer_household_id").references(() => households.id).notNull(),
+  energyTradedKwh: real("energy_traded_kwh").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+});
+
+// Battery Health & Scheduling Tables
+export const batteryLogs = pgTable("battery_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  householdId: uuid("household_id").references(() => households.id).notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  socPercent: real("soc_percent").notNull(), // State of Charge
+  dodPercent: real("dod_percent").notNull(), // Depth of Discharge
+  cycleCount: integer("cycle_count").notNull(),
+  alert: text("alert"), // Warning message if any
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   households: many(households),
   communityMembers: many(communityMembers),
   leaderboardSnapshots: many(leaderboardSnapshots),
+  applianceReadings: many(applianceReadings),
 }));
 
 export const householdsRelations = relations(households, ({ one, many }) => ({
@@ -121,6 +167,10 @@ export const householdsRelations = relations(households, ({ one, many }) => ({
   pvForecastHourly: many(pvForecastHourly),
   meterReadings: many(meterReadings),
   recommendations: many(recommendations),
+  householdEnergy: many(householdEnergy),
+  batteryLogs: many(batteryLogs),
+  sellerTrades: many(energyTrades, { relationName: "seller" }),
+  buyerTrades: many(energyTrades, { relationName: "buyer" }),
 }));
 
 export const devicesRelations = relations(devices, ({ one, many }) => ({
@@ -158,6 +208,49 @@ export const communityMembersRelations = relations(communityMembers, ({ one }) =
   }),
 }));
 
+// New table relations
+export const applianceReadingsRelations = relations(applianceReadings, ({ one, many }) => ({
+  user: one(users, {
+    fields: [applianceReadings.userId],
+    references: [users.id],
+  }),
+  anomalies: many(applianceAnomalies),
+}));
+
+export const applianceAnomaliesRelations = relations(applianceAnomalies, ({ one }) => ({
+  applianceReading: one(applianceReadings, {
+    fields: [applianceAnomalies.applianceReadingId],
+    references: [applianceReadings.id],
+  }),
+}));
+
+export const householdEnergyRelations = relations(householdEnergy, ({ one }) => ({
+  household: one(households, {
+    fields: [householdEnergy.householdId],
+    references: [households.id],
+  }),
+}));
+
+export const energyTradesRelations = relations(energyTrades, ({ one }) => ({
+  sellerHousehold: one(households, {
+    fields: [energyTrades.sellerHouseholdId],
+    references: [households.id],
+    relationName: "seller",
+  }),
+  buyerHousehold: one(households, {
+    fields: [energyTrades.buyerHouseholdId],
+    references: [households.id],
+    relationName: "buyer",
+  }),
+}));
+
+export const batteryLogsRelations = relations(batteryLogs, ({ one }) => ({
+  household: one(households, {
+    fields: [batteryLogs.householdId],
+    references: [households.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -188,6 +281,27 @@ export const insertCommunitySchema = createInsertSchema(communities).omit({
   createdAt: true,
 });
 
+// New insert schemas
+export const insertApplianceReadingSchema = createInsertSchema(applianceReadings).omit({
+  id: true,
+});
+
+export const insertApplianceAnomalySchema = createInsertSchema(applianceAnomalies).omit({
+  id: true,
+});
+
+export const insertHouseholdEnergySchema = createInsertSchema(householdEnergy).omit({
+  id: true,
+});
+
+export const insertEnergyTradeSchema = createInsertSchema(energyTrades).omit({
+  id: true,
+});
+
+export const insertBatteryLogSchema = createInsertSchema(batteryLogs).omit({
+  id: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -205,3 +319,15 @@ export type Community = typeof communities.$inferSelect;
 export type InsertCommunity = z.infer<typeof insertCommunitySchema>;
 export type CommunityMember = typeof communityMembers.$inferSelect;
 export type LeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
+
+// New types
+export type ApplianceReading = typeof applianceReadings.$inferSelect;
+export type InsertApplianceReading = z.infer<typeof insertApplianceReadingSchema>;
+export type ApplianceAnomaly = typeof applianceAnomalies.$inferSelect;
+export type InsertApplianceAnomaly = z.infer<typeof insertApplianceAnomalySchema>;
+export type HouseholdEnergy = typeof householdEnergy.$inferSelect;
+export type InsertHouseholdEnergy = z.infer<typeof insertHouseholdEnergySchema>;
+export type EnergyTrade = typeof energyTrades.$inferSelect;
+export type InsertEnergyTrade = z.infer<typeof insertEnergyTradeSchema>;
+export type BatteryLog = typeof batteryLogs.$inferSelect;
+export type InsertBatteryLog = z.infer<typeof insertBatteryLogSchema>;
