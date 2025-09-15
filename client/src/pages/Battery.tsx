@@ -24,7 +24,6 @@ import {
   Settings,
   Database
 } from 'lucide-react';
-import { SimulationToggle } from '@/components/SimulationToggle';
 import { apiRequest } from '@/lib/queryClient';
 import type { BatteryLog, Household, InsertBatteryLog } from '@shared/schema';
 import { insertBatteryLogSchema } from '@shared/schema';
@@ -137,6 +136,18 @@ export default function Battery() {
   } = useQuery<any[]>({
     queryKey: ['/api/schedule'],
     enabled: !!user,
+  });
+
+  // Fetch household battery status for different households comparison
+  const { 
+    data: householdsBatteryStatus = [], 
+    isLoading: isLoadingHouseholdsBattery,
+    error: householdsBatteryError,
+    refetch: refetchHouseholdsBattery 
+  } = useQuery<any[]>({
+    queryKey: ['/api/households-battery-status'],
+    enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds for live updates
   });
 
   // Sort battery logs by timestamp desc to ensure latest entry is first
@@ -426,14 +437,6 @@ export default function Battery() {
         </Card>
       )}
 
-      {/* Simulation Toggle */}
-      <SimulationToggle 
-        type="battery"
-        onDataGenerated={() => {
-          // Refresh the data when new simulated data is generated
-          refetchLogs();
-        }}
-      />
 
       {/* Battery Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -547,6 +550,121 @@ export default function Battery() {
           )}
         </CardContent>
       </Card>
+
+      {/* Different Households Battery Status */}
+      {householdsBatteryStatus.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="w-5 h-5" />
+              <span>Different Households</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingHouseholdsBattery ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="p-4">
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-muted rounded mb-2"></div>
+                      <div className="h-6 bg-muted rounded mb-2"></div>
+                      <div className="h-3 bg-muted rounded"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : householdsBatteryError ? (
+              <div className="text-center py-4">
+                <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-destructive" />
+                <p className="text-destructive text-sm">Failed to load household battery data</p>
+                <Button 
+                  onClick={() => refetchHouseholdsBattery()} 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  data-testid="button-retry-households-battery"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {householdsBatteryStatus.map((householdBattery: any) => (
+                  <Card key={householdBattery.householdId} className="border-l-4 border-l-primary">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-medium text-foreground" data-testid={`text-household-name-${householdBattery.householdId}`}>
+                            {householdBattery.householdName}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Last updated: {new Date(householdBattery.lastUpdated).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <BatteryIcon className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-muted-foreground">SoC</span>
+                            </div>
+                            <span className="text-lg font-bold text-foreground" data-testid={`text-soc-${householdBattery.householdId}`}>
+                              {householdBattery.stateOfCharge}%
+                            </span>
+                          </div>
+                          <Progress value={householdBattery.stateOfCharge} className="h-1.5" />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className={`w-4 h-4 ${
+                              householdBattery.healthStatus === 'Good' ? 'text-green-500' :
+                              householdBattery.healthStatus === 'Warning' ? 'text-yellow-500' : 'text-red-500'
+                            }`} />
+                            <span className="text-sm text-muted-foreground">Health</span>
+                          </div>
+                          <Badge 
+                            className={
+                              householdBattery.healthStatus === 'Good' ? 'bg-green-500 text-white' :
+                              householdBattery.healthStatus === 'Warning' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'
+                            }
+                            data-testid={`badge-health-${householdBattery.householdId}`}
+                          >
+                            {householdBattery.healthStatus}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm text-muted-foreground">Daily Cycles</span>
+                          </div>
+                          <span className="text-sm font-medium text-foreground" data-testid={`text-cycles-${householdBattery.householdId}`}>
+                            {householdBattery.dailyCycles}
+                          </span>
+                        </div>
+
+                        <div className="pt-2 border-t">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Mode:</span>
+                            <Badge variant="outline" className={
+                              householdBattery.currentMode === 'charging' ? 'text-green-600 border-green-300' :
+                              householdBattery.currentMode === 'discharging' ? 'text-orange-600 border-orange-300' : 'text-blue-600 border-blue-300'
+                            }>
+                              {householdBattery.currentMode}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Add Battery Log */}

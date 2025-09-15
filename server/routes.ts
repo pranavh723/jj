@@ -1183,6 +1183,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Household Battery Status API - For different households battery overview
+  app.get("/api/households-battery-status", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      const households = await storage.getHouseholdsByUserId(user.userId);
+      
+      // Mock household names and create realistic battery data consistent with dashboard consumption
+      const householdBatteryStatus = households.map((household: any, index: number) => {
+        const currentHour = new Date().getHours();
+        const currentMinute = new Date().getMinutes();
+        
+        // Base SoC varies by household characteristics
+        let baseSoC = 60 + (index * 15) % 40; // 60-85% range varied by household
+        
+        // Adjust SoC based on time of day to be consistent with consumption patterns
+        if (currentHour >= 6 && currentHour <= 18) {
+          // Daytime: charging from solar
+          baseSoC += Math.sin((currentHour - 6) / 12 * Math.PI) * 15;
+        } else {
+          // Nighttime: discharging
+          baseSoC -= Math.sin((currentHour + 6) / 12 * Math.PI) * 10;
+        }
+        
+        // Ensure SoC stays within realistic bounds
+        const stateOfCharge = Math.max(15, Math.min(95, baseSoC + (Math.random() - 0.5) * 5));
+        
+        // Calculate daily cycles based on usage patterns
+        const dailyCycles = Math.round((1 + Math.random() * 0.5) * 10) / 10; // 1.0-1.5 cycles per day
+        
+        // Health status based on SoC and usage patterns
+        let healthStatus = 'Good';
+        if (stateOfCharge < 20 || dailyCycles > 1.3) {
+          healthStatus = 'Warning';
+        } else if (stateOfCharge < 10 || dailyCycles > 1.5) {
+          healthStatus = 'Fault';
+        }
+        
+        return {
+          householdId: household.id,
+          householdName: household.name,
+          stateOfCharge: Math.round(stateOfCharge * 10) / 10,
+          healthStatus,
+          dailyCycles,
+          lastUpdated: new Date().toISOString(),
+          // Additional details for consistency with dashboard consumption
+          batteryCapacity: household.batteryCapacityKwh || 10.0, // kWh
+          maxDoD: 80, // Maximum depth of discharge %
+          currentMode: currentHour >= 10 && currentHour <= 16 ? 'charging' : 
+                      currentHour >= 18 && currentHour <= 22 ? 'discharging' : 'idle'
+        };
+      });
+      
+      res.json(householdBatteryStatus);
+    } catch (error) {
+      console.error('Get household battery status error:', error);
+      res.status(500).json({ message: 'Failed to fetch household battery status' });
+    }
+  });
+
   // Schedule Management Routes
   app.get("/api/schedule", authenticateToken, async (req, res) => {
     try {
