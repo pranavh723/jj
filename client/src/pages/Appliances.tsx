@@ -391,7 +391,7 @@ export default function Appliances() {
             </div>
           ) : (
             <div className="space-y-4">
-              {anomalies.slice(0, 10).map((anomaly) => (
+              {anomalies.slice(0, 3).map((anomaly) => (
                 <div
                   key={anomaly.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
