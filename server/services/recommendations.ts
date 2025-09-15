@@ -35,7 +35,9 @@ export class RecommendationService {
     
     const pvForecasts = await storage.getPvForecastHourly(householdId, startTime, endTime);
 
-    // Generate recommendations for each flexible device
+    // Generate recommendations for all flexible devices
+    const allRecommendations: Array<TimeWindow & { deviceId: string; deviceName: string }> = [];
+    
     for (const device of flexibleDevices) {
       const recommendations = this.generateDeviceRecommendations({
         device,
@@ -43,25 +45,40 @@ export class RecommendationService {
         pvForecasts
       });
 
-      // Save the best recommendation
-      if (recommendations.length > 0) {
-        const best = recommendations[0];
-        const startTs = new Date(startTime);
-        startTs.setHours(best.startHour, 0, 0, 0);
-        
-        const endTs = new Date(startTs);
-        endTs.setHours(best.endHour, 0, 0, 0);
-
-        await storage.createRecommendation({
-          householdId,
+      // Add device info to each recommendation
+      recommendations.forEach(rec => {
+        allRecommendations.push({
+          ...rec,
           deviceId: device.id,
-          startTs,
-          endTs,
-          reason: best.reason,
-          estimatedSavings: best.estimatedSavings,
-          estimatedCo2Avoided: best.estimatedCo2Avoided
+          deviceName: device.name
         });
-      }
+      });
+    }
+
+    // Sort all recommendations by score and filter to unique time slots
+    const sortedRecommendations = allRecommendations.sort((a, b) => b.score - a.score);
+    const uniqueRecommendations = this.filterUniqueRecommendations(sortedRecommendations);
+    
+    // Limit to top 2-3 recommendations
+    const finalRecommendations = uniqueRecommendations.slice(0, 3);
+
+    // Save the filtered recommendations
+    for (const rec of finalRecommendations) {
+      const startTs = new Date(startTime);
+      startTs.setHours(rec.startHour, 0, 0, 0);
+      
+      const endTs = new Date(startTs);
+      endTs.setHours(rec.endHour, 0, 0, 0);
+
+      await storage.createRecommendation({
+        householdId,
+        deviceId: rec.deviceId,
+        startTs,
+        endTs,
+        reason: rec.reason,
+        estimatedSavings: rec.estimatedSavings,
+        estimatedCo2Avoided: rec.estimatedCo2Avoided
+      });
     }
   }
 
@@ -155,6 +172,33 @@ export class RecommendationService {
     });
   }
 
+  private filterUniqueRecommendations(recommendations: Array<TimeWindow & { deviceId: string; deviceName: string }>): Array<TimeWindow & { deviceId: string; deviceName: string }> {
+    const uniqueRecommendations: Array<TimeWindow & { deviceId: string; deviceName: string }> = [];
+    const usedTimeSlots: Array<{ start: number; end: number }> = [];
+
+    for (const rec of recommendations) {
+      // Check if this time slot overlaps with any used slot (with 2-hour buffer)
+      let hasOverlap = false;
+      
+      for (const used of usedTimeSlots) {
+        // Create buffered window: [usedStart-2, usedEnd+2]
+        // Check intersection: rec.start < (used.end + 2) && rec.end > (used.start - 2)
+        if (rec.startHour < (used.end + 2) && rec.endHour > (used.start - 2)) {
+          hasOverlap = true;
+          break;
+        }
+      }
+
+      // Only add if no overlap and we don't have too many recommendations yet
+      if (!hasOverlap && uniqueRecommendations.length < 3) {
+        uniqueRecommendations.push(rec);
+        usedTimeSlots.push({ start: rec.startHour, end: rec.endHour });
+      }
+    }
+
+    return uniqueRecommendations;
+  }
+
   private generateRecommendationReason(
     deviceName: string,
     startHour: number,
@@ -226,8 +270,8 @@ export class RecommendationService {
     const totalConsumption = solarGenerated + gridConsumed;
     const renewableShare = totalConsumption > 0 ? (solarGenerated / totalConsumption) * 100 : 0;
     
-    const costSavings = solarGenerated * household.tariffPerKwh;
-    const co2Avoided = solarGenerated * household.co2FactorKgPerKwh;
+    const costSavings = solarGenerated * (household.tariffPerKwh ?? 5.0);
+    const co2Avoided = solarGenerated * (household.co2FactorKgPerKwh ?? 0.82);
 
     return {
       solarGenerated: Math.round(solarGenerated * 100) / 100,
