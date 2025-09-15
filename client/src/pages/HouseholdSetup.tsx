@@ -68,7 +68,11 @@ export default function HouseholdSetup() {
   const createHouseholdMutation = useMutation({
     mutationFn: (data: HouseholdFormData) => api.createHousehold(data),
     onSuccess: () => {
+      // Invalidate all household-related queries
       queryClient.invalidateQueries({ queryKey: ['/api/households'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
       form.reset();
       setActiveTab('existing');
       toast({
@@ -89,7 +93,11 @@ export default function HouseholdSetup() {
   const updateHouseholdMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: HouseholdFormData }) => api.updateHousehold(id, data),
     onSuccess: () => {
+      // Invalidate all household-related queries
       queryClient.invalidateQueries({ queryKey: ['/api/households'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
       setEditingHousehold(null);
       form.reset();
       toast({
@@ -110,7 +118,11 @@ export default function HouseholdSetup() {
   const deleteHouseholdMutation = useMutation({
     mutationFn: (id: string) => api.deleteHousehold(id),
     onSuccess: () => {
+      // Invalidate all household-related queries
       queryClient.invalidateQueries({ queryKey: ['/api/households'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
       toast({
         title: "Household deleted successfully",
         description: "The household has been removed from your account.",

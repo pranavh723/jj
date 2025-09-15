@@ -76,10 +76,23 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // Set first household as default
+  // Set first household as default and handle deleted households
   useEffect(() => {
-    if (households.length > 0 && !currentHousehold) {
-      setCurrentHousehold(households[0].id);
+    if (households.length > 0) {
+      if (!currentHousehold) {
+        // No household selected, select the first one
+        setCurrentHousehold(households[0].id);
+      } else {
+        // Check if currently selected household still exists
+        const currentExists = households.some(h => h.id === currentHousehold);
+        if (!currentExists) {
+          // Currently selected household was deleted, select the first available one
+          setCurrentHousehold(households[0].id);
+        }
+      }
+    } else if (currentHousehold) {
+      // No households left, clear selection
+      setCurrentHousehold(null);
     }
   }, [households, currentHousehold]);
 
