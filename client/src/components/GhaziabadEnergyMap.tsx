@@ -37,6 +37,7 @@ interface RenewableInstallation {
 
 interface GhaziabadEnergyMapProps {
   onInstallationClick?: (installation: RenewableInstallation) => void;
+  variant?: 'default' | 'compact';
 }
 
 // Real renewable energy installations in Ghaziabad, Uttar Pradesh
@@ -199,7 +200,7 @@ const STATUS_COLORS = {
   planned: '#6B7280' // Gray
 };
 
-export function GhaziabadEnergyMap({ onInstallationClick }: GhaziabadEnergyMapProps) {
+export function GhaziabadEnergyMap({ onInstallationClick, variant = 'default' }: GhaziabadEnergyMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [filterType, setFilterType] = useState<string>('all');
@@ -356,6 +357,81 @@ export function GhaziabadEnergyMap({ onInstallationClick }: GhaziabadEnergyMapPr
   const operationalCount = filteredInstallations.filter(i => i.status === 'operational').length;
   const underConstructionCount = filteredInstallations.filter(i => i.status === 'under_construction').length;
   const plannedCount = filteredInstallations.filter(i => i.status === 'planned').length;
+
+  if (variant === 'compact') {
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              <CardTitle className="text-base">Energy Infrastructure Map</CardTitle>
+            </div>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-32" data-testid="select-type-filter">
+                <Filter className="w-3 h-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="solar_park">Solar Parks</SelectItem>
+                <SelectItem value="rooftop_residential">Residential</SelectItem>
+                <SelectItem value="rooftop_commercial">Commercial</SelectItem>
+                <SelectItem value="rooftop_industrial">Industrial</SelectItem>
+                <SelectItem value="rrts_solar">RRTS Solar</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            {/* Compact Legend */}
+            <div className="grid grid-cols-3 gap-2 p-2 bg-muted/30 rounded text-xs">
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full flex items-center justify-center text-[8px]" 
+                     style={{ backgroundColor: INSTALLATION_COLORS.solar_park }}>🏭</div>
+                <span>Parks</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full flex items-center justify-center text-[8px]" 
+                     style={{ backgroundColor: INSTALLATION_COLORS.rooftop_residential }}>🏠</div>
+                <span>Residential</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full flex items-center justify-center text-[8px]" 
+                     style={{ backgroundColor: INSTALLATION_COLORS.rooftop_commercial }}>🏢</div>
+                <span>Commercial</span>
+              </div>
+            </div>
+
+            {/* Compact Map Container */}
+            <div 
+              ref={mapRef} 
+              className="h-[300px] w-full rounded-lg border overflow-hidden"
+              data-testid="ghaziabad-energy-map"
+            />
+
+            {/* Compact Statistics */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="text-center p-2 bg-primary/5 rounded">
+                <div className="text-sm font-bold text-primary" data-testid="text-total-capacity">
+                  {(totalCapacityKW / 1000).toFixed(1)} MW
+                </div>
+                <div className="text-xs text-muted-foreground">Total Capacity</div>
+              </div>
+              <div className="text-center p-2 bg-green-50 dark:bg-green-950/20 rounded">
+                <div className="text-sm font-bold text-green-600" data-testid="text-operational-count">
+                  {operationalCount}
+                </div>
+                <div className="text-xs text-muted-foreground">Operational</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full">

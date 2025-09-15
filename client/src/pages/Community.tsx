@@ -130,15 +130,14 @@ function NoCommunityView() {
           </div>
           
           {/* Compact Energy Map */}
-          <div className="h-64 md:h-80">
-            <div style={{ height: '100%' }}>
-              <GhaziabadEnergyMap 
-                onInstallationClick={(installation) => {
-                  console.log('Installation clicked:', installation);
-                  // Handle installation details viewing
-                }}
-              />
-            </div>
+          <div className="w-full">
+            <GhaziabadEnergyMap 
+              variant="compact"
+              onInstallationClick={(installation) => {
+                console.log('Installation clicked:', installation);
+                // Handle installation details viewing
+              }}
+            />
           </div>
 
           {/* Engaging Statistics */}
