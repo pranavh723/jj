@@ -1032,7 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dodPercent: 25,
         cycleCount: 450,
         timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-        alert: null
+        alert: null as string | null
       };
       
       if (latestLog) {
@@ -1143,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const temperature = baseTemp + tempVariation + (Math.random() - 0.5) * 0.5;
       
       // Generate alerts based on current conditions
-      let currentAlert = baselineData.alert;
+      let currentAlert: string | null = baselineData.alert;
       if (liveSoC < 15) {
         currentAlert = 'Critical: Battery charge below 15% - immediate charging required';
       } else if (liveDoD > 85) {
@@ -1171,8 +1171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Additional live data for dashboard
         powerFlow: {
           charging_kW: currentBatteryMode === 'charging' ? Math.round(solarIntensity * 2.5 * 100) / 100 : 0,
-          discharging_kW: currentBatteryMode === 'discharging' ? Math.round(Math.random() * 1.8 + 0.5, 2) : 0,
-          idle_kW: currentBatteryMode === 'idle' ? Math.round(Math.random() * 0.2, 2) : 0
+          discharging_kW: currentBatteryMode === 'discharging' ? Math.round((Math.random() * 1.8 + 0.5) * 100) / 100 : 0,
+          idle_kW: currentBatteryMode === 'idle' ? Math.round((Math.random() * 0.2) * 100) / 100 : 0
         }
       };
       
