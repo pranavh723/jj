@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -569,6 +570,13 @@ export default function Community() {
               <SelectItem value="year">This Year</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button asChild size="sm" className="flex items-center gap-2" data-testid="button-energy-trading">
+            <Link href="/community/energy-trading">
+              <Zap className="w-4 h-4" />
+              <span>Energy Trading Marketplace</span>
+            </Link>
+          </Button>
         </div>
       </div>
 
