@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import type { Household } from '@shared/schema';
+import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,11 @@ import {
   TrendingUp, 
   TrendingDown,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Home,
+  Cpu,
+  Battery as BatteryIcon,
+  ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,6 +48,19 @@ interface DashboardData {
   metrics: DashboardMetrics;
   weather: WeatherData;
   recommendations: any[];
+}
+
+interface HouseholdMetrics {
+  id: string;
+  name: string;
+  daily: {
+    consumption: number;
+    renewablePercentage: number;
+  };
+  monthly: {
+    consumption: number;
+    renewablePercentage: number;
+  };
 }
 
 export default function Dashboard() {
@@ -100,6 +118,17 @@ export default function Dashboard() {
     queryKey: ['/api/grid'],
     enabled: !!user,
     refetchInterval: 10000, // Refresh every 10 seconds for live grid data
+  });
+
+  // Fetch household metrics for all user households
+  const { 
+    data: householdMetrics = [],
+    isLoading: isLoadingHouseholdMetrics,
+    error: householdMetricsError 
+  } = useQuery<HouseholdMetrics[]>({
+    queryKey: ['/api/households-metrics'],
+    enabled: !!user,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 
   // Generate recommendations mutation
@@ -310,6 +339,111 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Different Households Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+            <Home className="w-5 h-5" />
+            <span>Different Households</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {householdMetricsError ? (
+            <div className="text-center py-8 text-destructive">
+              <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+              <p>Failed to load household metrics</p>
+              <p className="text-sm">{householdMetricsError.message}</p>
+            </div>
+          ) : isLoadingHouseholdMetrics ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+              <span>Loading households...</span>
+            </div>
+          ) : householdMetrics.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p>No households found.</p>
+              <p className="text-sm">Set up your first household to start monitoring energy usage.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {householdMetrics.map((household) => (
+                <Card key={household.id} className="card-hover border-2 hover:border-primary/20 transition-all duration-200">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Household Name */}
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-foreground" data-testid={`household-name-${household.id}`}>
+                          {household.name}
+                        </h3>
+                        <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                      </div>
+                      
+                      {/* Daily Consumption */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Daily Consumption</span>
+                          <span className="text-sm font-medium" data-testid={`daily-consumption-${household.id}`}>
+                            {household.daily.consumption.toFixed(1)} kWh
+                          </span>
+                        </div>
+                        
+                        {/* Monthly Consumption */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Monthly Consumption</span>
+                          <span className="text-sm font-medium" data-testid={`monthly-consumption-${household.id}`}>
+                            {household.monthly.consumption.toFixed(1)} kWh
+                          </span>
+                        </div>
+                        
+                        {/* Renewable Usage */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Renewable Usage</span>
+                          <div className="flex items-center space-x-1">
+                            <Leaf className="w-3 h-3 text-primary" />
+                            <span className="text-sm font-medium text-primary" data-testid={`renewable-percentage-${household.id}`}>
+                              {household.daily.renewablePercentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Navigation Buttons */}
+                      <div className="flex space-x-2 pt-2">
+                        <Link href="/appliances">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 text-xs"
+                            data-testid={`button-appliances-${household.id}`}
+                          >
+                            <Cpu className="w-3 h-3 mr-1" />
+                            Appliances
+                            <ArrowRight className="w-3 h-3 ml-1" />
+                          </Button>
+                        </Link>
+                        <Link href="/battery">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 text-xs"
+                            data-testid={`button-battery-${household.id}`}
+                          >
+                            <BatteryIcon className="w-3 h-3 mr-1" />
+                            Battery
+                            <ArrowRight className="w-3 h-3 ml-1" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

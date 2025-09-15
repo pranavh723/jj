@@ -1480,6 +1480,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get household statistics for all user households
+  app.get("/api/households-metrics", authenticateToken, async (req, res) => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      
+      // Get all households for user
+      const userHouseholds = await storage.getHouseholdsByUserId(userId);
+      
+      if (!userHouseholds || userHouseholds.length === 0) {
+        return res.json([]);
+      }
+
+      // Calculate metrics for each household
+      const householdMetrics = await Promise.all(userHouseholds.map(async (household) => {
+        try {
+          // Get daily metrics
+          const dailyMetrics = await recommendationService.calculateDailyMetrics(household.id);
+          
+          // Calculate monthly metrics (simplified - multiply daily by ~30)
+          const monthlyMetrics = {
+            solarGenerated: dailyMetrics.solarGenerated * 30,
+            gridConsumed: dailyMetrics.gridConsumed * 30,
+            totalConsumption: (dailyMetrics.solarGenerated + dailyMetrics.gridConsumed) * 30,
+          };
+          
+          return {
+            id: household.id,
+            name: household.name,
+            daily: {
+              consumption: Math.round((dailyMetrics.solarGenerated + dailyMetrics.gridConsumed) * 100) / 100,
+              renewablePercentage: dailyMetrics.renewableShare
+            },
+            monthly: {
+              consumption: Math.round(monthlyMetrics.totalConsumption * 100) / 100,
+              renewablePercentage: dailyMetrics.renewableShare // Same as daily for simplicity
+            }
+          };
+        } catch (error) {
+          console.error(`Error calculating metrics for household ${household.id}:`, error);
+          return {
+            id: household.id,
+            name: household.name,
+            daily: { consumption: 0, renewablePercentage: 0 },
+            monthly: { consumption: 0, renewablePercentage: 0 }
+          };
+        }
+      }));
+
+      res.json(householdMetrics);
+    } catch (error) {
+      console.error('Get households metrics error:', error);
+      res.status(500).json({ message: 'Failed to fetch household metrics' });
+    }
+  });
+
   // Mock Data APIs for simulation
   app.get("/api/mock/appliance", async (req, res) => {
     try {
