@@ -155,16 +155,6 @@ export default function Community() {
           </p>
         </div>
 
-        <Card className="p-8 text-center">
-          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No communities available</h3>
-          <p className="text-muted-foreground mb-4">
-            Join a community to compare your renewable energy usage with neighbors and participate in challenges.
-          </p>
-          <Button data-testid="button-find-communities">
-            Find Communities Near You
-          </Button>
-        </Card>
 
         {/* Interactive Ghaziabad Renewable Energy Map */}
         <div className="space-y-4">
