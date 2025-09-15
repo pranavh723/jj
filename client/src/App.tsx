@@ -17,6 +17,7 @@ import Marketplace from "./pages/Marketplace";
 import Battery from "./pages/Battery";
 import Forecasting from "./pages/Forecasting";
 import Community from "./pages/Community";
+import EnergyTradingMarketplace from "./pages/EnergyTradingMarketplace";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/not-found";
 
@@ -32,6 +33,7 @@ function AuthenticatedApp() {
         <Route path="/battery" component={Battery} />
         <Route path="/forecasting" component={Forecasting} />
         <Route path="/community" component={Community} />
+        <Route path="/community/energy-trading" component={EnergyTradingMarketplace} />
         <Route path="/analytics" component={Analytics} />
         <Route component={NotFound} />
       </Switch>
