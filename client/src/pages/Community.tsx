@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CommunityLeaderboard } from '@/components/CommunityLeaderboard';
+import { GhaziabadEnergyMap } from '@/components/GhaziabadEnergyMap';
 import { 
   Users, 
   Trophy, 
@@ -19,6 +20,7 @@ import {
   Zap,
   Medal
 } from 'lucide-react';
+import type { Household } from '@shared/schema';
 
 interface Community {
   id: string;
@@ -57,6 +59,8 @@ export default function Community() {
     queryFn: () => api.getLeaderboard(selectedCommunity),
     enabled: !!selectedCommunity,
   });
+
+  // No longer need household fetching - using real Ghaziabad data instead
 
   // Mock community data (in real app, this would come from API)
   const communityStats = {
@@ -143,7 +147,14 @@ export default function Community() {
 
   if (communities.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Community</h1>
+          <p className="text-muted-foreground">
+            Connect with neighbors and compete in renewable energy challenges.
+          </p>
+        </div>
+
         <Card className="p-8 text-center">
           <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No communities available</h3>
@@ -154,6 +165,22 @@ export default function Community() {
             Find Communities Near You
           </Button>
         </Card>
+
+        {/* Interactive Ghaziabad Renewable Energy Map */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Ghaziabad Renewable Energy Infrastructure</h2>
+            <p className="text-muted-foreground">
+              Explore renewable energy installations across Ghaziabad, Uttar Pradesh. Click on markers for detailed information about solar parks, rooftop installations, and RRTS solar infrastructure.
+            </p>
+          </div>
+          <GhaziabadEnergyMap 
+            onInstallationClick={(installation) => {
+              console.log('Installation clicked:', installation);
+              // Handle installation details viewing
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -369,6 +396,8 @@ export default function Community() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Remove duplicate map section - already shown above */}
 
       {/* Community Leaderboard */}
       {isLoadingLeaderboard ? (

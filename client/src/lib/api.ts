@@ -123,6 +123,11 @@ export const api = {
     return response.json();
   },
 
+  async getCommunityHouseholds(communityId: string) {
+    const response = await apiRequest(`/api/community/${communityId}/households`);
+    return response.json();
+  },
+
   // Meter readings
   async createMeterReading(data: any) {
     const response = await apiRequest('/api/meter-readings', 'POST', data);

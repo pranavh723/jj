@@ -58,6 +58,7 @@ export interface IStorage {
   createCommunity(community: InsertCommunity): Promise<Community>;
   getCommunityMembers(communityId: string): Promise<CommunityMember[]>;
   addCommunityMember(communityId: string, userId: string): Promise<CommunityMember>;
+  getCommunityHouseholds(communityId: string): Promise<Household[]>;
 
   // Leaderboard
   getLeaderboardSnapshots(communityId: string, periodStart: Date, periodEnd: Date): Promise<LeaderboardSnapshot[]>;
@@ -258,6 +259,29 @@ export class DatabaseStorage implements IStorage {
       userId
     }).returning();
     return member;
+  }
+
+  async getCommunityHouseholds(communityId: string): Promise<Household[]> {
+    // Join communityMembers and households to get households for community members
+    return await db
+      .select({
+        id: households.id,
+        userId: households.userId,
+        name: households.name,
+        latitude: households.latitude,
+        longitude: households.longitude,
+        pvKw: households.pvKw,
+        tilt: households.tilt,
+        azimuth: households.azimuth,
+        tariffCurrency: households.tariffCurrency,
+        tariffPerKwh: households.tariffPerKwh,
+        co2FactorKgPerKwh: households.co2FactorKgPerKwh,
+        usePvwatts: households.usePvwatts,
+        createdAt: households.createdAt,
+      })
+      .from(households)
+      .innerJoin(communityMembers, eq(households.userId, communityMembers.userId))
+      .where(eq(communityMembers.communityId, communityId));
   }
 
   async getLeaderboardSnapshots(communityId: string, periodStart: Date, periodEnd: Date): Promise<LeaderboardSnapshot[]> {

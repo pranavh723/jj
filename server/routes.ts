@@ -626,6 +626,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/community/:id/households", async (req, res) => {
+    try {
+      const communityId = req.params.id;
+      const households = await storage.getCommunityHouseholds(communityId);
+      res.json(households);
+    } catch (error) {
+      console.error('Get community households error:', error);
+      res.status(500).json({ message: 'Failed to fetch community households' });
+    }
+  });
+
   // ===== NEW FEATURE ROUTES =====
   
   // Appliance Anomaly Detection Routes
