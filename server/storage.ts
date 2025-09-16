@@ -67,6 +67,8 @@ export interface IStorage {
   // Appliance Anomaly Detection
   createApplianceReading(reading: InsertApplianceReading): Promise<ApplianceReading>;
   getApplianceReadings(userId: string, startTime: Date, endTime: Date): Promise<ApplianceReading[]>;
+  getApplianceReadingById(id: string): Promise<ApplianceReading | undefined>;
+  deleteApplianceReading(id: string): Promise<void>;
   getApplianceAnomalies(userId: string): Promise<ApplianceAnomaly[]>;
   createApplianceAnomaly(anomaly: InsertApplianceAnomaly): Promise<ApplianceAnomaly>;
 
@@ -334,7 +336,19 @@ export class DatabaseStorage implements IStorage {
         gte(applianceReadings.timestamp, startTime),
         lte(applianceReadings.timestamp, endTime)
       ))
-      .orderBy(applianceReadings.timestamp);
+      .orderBy(desc(applianceReadings.timestamp));
+  }
+
+  async getApplianceReadingById(id: string): Promise<ApplianceReading | undefined> {
+    const [reading] = await db.select().from(applianceReadings).where(eq(applianceReadings.id, id));
+    return reading || undefined;
+  }
+
+  async deleteApplianceReading(id: string): Promise<void> {
+    // First delete related anomalies
+    await db.delete(applianceAnomalies).where(eq(applianceAnomalies.applianceReadingId, id));
+    // Then delete the appliance reading
+    await db.delete(applianceReadings).where(eq(applianceReadings.id, id));
   }
 
   async getApplianceAnomalies(userId: string): Promise<any[]> {

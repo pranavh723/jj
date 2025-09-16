@@ -790,6 +790,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/readings/:id", authenticateToken, async (req, res) => {
+    try {
+      const readingId = req.params.id;
+      const user = (req as AuthenticatedRequest).user;
+      
+      // Verify the reading exists and belongs to the authenticated user
+      const reading = await storage.getApplianceReadingById(readingId);
+      
+      if (!reading) {
+        return res.status(404).json({ message: 'Reading not found' });
+      }
+      
+      if (reading.userId !== user.userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      await storage.deleteApplianceReading(readingId);
+      res.json({ message: 'Reading deleted successfully' });
+    } catch (error) {
+      console.error('Delete reading error:', error);
+      res.status(500).json({ message: 'Failed to delete reading' });
+    }
+  });
+
   app.get("/api/anomalies", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;

@@ -133,4 +133,10 @@ export const api = {
     const response = await apiRequest('/api/meter-readings', 'POST', data);
     return response.json();
   },
+
+  // Appliance readings
+  async deleteApplianceReading(id: string) {
+    const response = await apiRequest(`/api/readings/${id}`, 'DELETE');
+    return response.json();
+  },
 };

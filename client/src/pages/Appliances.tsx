@@ -14,7 +14,8 @@ import {
   CheckCircle, 
   TrendingUp,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import type { ApplianceReading, ApplianceAnomaly, InsertApplianceReading } from '@shared/schema';
@@ -85,6 +86,28 @@ export default function Appliances() {
       toast({
         title: "Error",
         description: error.message || "Failed to add appliance reading",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete appliance reading mutation
+  const deleteReadingMutation = useMutation({
+    mutationFn: async (readingId: string) => {
+      return apiRequest(`/api/readings/${readingId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reading Deleted",
+        description: "The appliance reading has been successfully removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/readings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anomalies'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete appliance reading",
         variant: "destructive",
       });
     },
@@ -294,6 +317,7 @@ export default function Appliances() {
                     <th className="text-left p-3">Appliance</th>
                     <th className="text-left p-3">Power (W)</th>
                     <th className="text-left p-3">Timestamp</th>
+                    <th className="text-right p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,6 +331,22 @@ export default function Appliances() {
                       </td>
                       <td className="p-3 text-muted-foreground" data-testid={`reading-time-${reading.id}`}>
                         {new Date(reading.timestamp).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteReadingMutation.mutate(reading.id)}
+                          disabled={deleteReadingMutation.isPending}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          data-testid={`button-delete-reading-${reading.id}`}
+                        >
+                          {deleteReadingMutation.isPending ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
                       </td>
                     </tr>
                   ))}
