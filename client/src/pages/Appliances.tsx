@@ -3,11 +3,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Cpu, 
   AlertTriangle, 
@@ -18,7 +20,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import type { ApplianceReading, ApplianceAnomaly, InsertApplianceReading } from '@shared/schema';
+import type { ApplianceReading, ApplianceAnomaly, InsertApplianceReading, Household } from '@shared/schema';
 import { insertApplianceReadingSchema } from '@shared/schema';
 import { z } from 'zod';
 
@@ -36,7 +38,20 @@ export default function Appliances() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedHousehold, setSelectedHousehold] = useState<string>('');
   
+  // Fetch households
+  const { data: households = [] } = useQuery<Household[]>({
+    queryKey: ['/api/households'],
+  });
+
+  // Set first household as default
+  useEffect(() => {
+    if (households.length > 0 && !selectedHousehold) {
+      setSelectedHousehold(households[0].id);
+    }
+  }, [households, selectedHousehold]);
+
   // Form setup
   const form = useForm({
     resolver: zodResolver(applianceFormSchema),
@@ -53,8 +68,15 @@ export default function Appliances() {
     error: readingsError,
     refetch: refetchReadings 
   } = useQuery<ApplianceReading[]>({
-    queryKey: ['/api/readings'],
-    enabled: !!user,
+    queryKey: ['/api/readings', selectedHousehold],
+    queryFn: async () => {
+      const url = selectedHousehold 
+        ? `/api/readings?household_id=${selectedHousehold}`
+        : '/api/readings';
+      const response = await apiRequest(url);
+      return response.json();
+    },
+    enabled: !!user && !!selectedHousehold,
   });
 
   // Fetch appliance device status
@@ -64,8 +86,15 @@ export default function Appliances() {
     error: deviceStatusError,
     refetch: refetchDeviceStatus 
   } = useQuery<DeviceStatusWithReading[]>({
-    queryKey: ['/api/anomalies'],
-    enabled: !!user,
+    queryKey: ['/api/anomalies', selectedHousehold],
+    queryFn: async () => {
+      const url = selectedHousehold 
+        ? `/api/anomalies?household_id=${selectedHousehold}`
+        : '/api/anomalies';
+      const response = await apiRequest(url);
+      return response.json();
+    },
+    enabled: !!user && !!selectedHousehold,
   });
 
   // Add appliance reading mutation
@@ -78,8 +107,8 @@ export default function Appliances() {
         title: "Reading Added",
         description: "Appliance power reading has been recorded and device status analyzed.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/readings'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/readings', selectedHousehold] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anomalies', selectedHousehold] });
       form.reset();
     },
     onError: (error: any) => {
@@ -101,8 +130,8 @@ export default function Appliances() {
         title: "Reading Deleted",
         description: "The appliance reading has been successfully removed.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/readings'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anomalies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/readings', selectedHousehold] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anomalies', selectedHousehold] });
     },
     onError: (error: any) => {
       toast({
@@ -209,16 +238,32 @@ export default function Appliances() {
             Monitor your appliances and track device status using AI-powered analysis
           </p>
         </div>
-        <Button
-          onClick={() => refetchDeviceStatus()}
-          variant="outline"
-          size="sm"
-          disabled={isLoadingDeviceStatus}
-          data-testid="button-refresh-device-status"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingDeviceStatus ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-4">
+          {households.length > 1 && (
+            <Select value={selectedHousehold} onValueChange={setSelectedHousehold}>
+              <SelectTrigger className="w-48" data-testid="select-household">
+                <SelectValue placeholder="Select household" />
+              </SelectTrigger>
+              <SelectContent>
+                {households.map((household: any) => (
+                  <SelectItem key={household.id} value={household.id}>
+                    {household.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            onClick={() => refetchDeviceStatus()}
+            variant="outline"
+            size="sm"
+            disabled={isLoadingDeviceStatus}
+            data-testid="button-refresh-device-status"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingDeviceStatus ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
 
