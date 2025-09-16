@@ -95,28 +95,20 @@ export default function Battery() {
     },
   });
 
-  // Fetch user's households
-  const { 
-    data: households = [], 
-    isLoading: isLoadingHouseholds,
-    error: householdsError,
-    refetch: refetchHouseholds 
-  } = useQuery<Household[]>({
-    queryKey: ['/api/households'],
-    enabled: !!user,
-  });
+  // Households are now fetched via centralizedData
 
-  // Fetch community households for consistent dropdown options
-  const { data: communityData } = useQuery<any>({
-    queryKey: ['/api/community'],
+  // Fetch centralized data for households and battery info
+  const { data: centralizedData, isLoading: isLoadingCentralized, error: centralizedError, refetch: refetchCentralized } = useQuery<any>({
+    queryKey: ['/api/data'],
+    enabled: !!user,
   });
 
   // Set first household as default when data loads
   useEffect(() => {
-    if (communityData?.households?.length > 0 && !selectedHousehold) {
-      setSelectedHousehold(communityData.households[0].id);
+    if (centralizedData?.households?.length > 0 && !selectedHousehold) {
+      setSelectedHousehold(centralizedData.households[0].id);
     }
-  }, [communityData, selectedHousehold]);
+  }, [centralizedData, selectedHousehold]);
 
   // Fetch main battery status (real-time live data)
   const { 
@@ -152,17 +144,7 @@ export default function Battery() {
     enabled: !!user,
   });
 
-  // Fetch household battery status for different households comparison
-  const { 
-    data: householdsBatteryStatus = [], 
-    isLoading: isLoadingHouseholdsBattery,
-    error: householdsBatteryError,
-    refetch: refetchHouseholdsBattery 
-  } = useQuery<any[]>({
-    queryKey: ['/api/households-battery-status'],
-    enabled: !!user,
-    refetchInterval: 10000, // Refresh every 10 seconds for live updates
-  });
+  // Battery status is now included in centralizedData
 
   // Sort battery logs by timestamp desc to ensure latest entry is first
   const batteryLogs = [...batteryLogsRaw].sort((a, b) => 
@@ -372,31 +354,31 @@ export default function Battery() {
         <div className="flex space-x-2">
           <Button
             onClick={() => {
-              refetchHouseholds();
+              refetchCentralized();
               refetchLogs();
               refetchMainBattery();
             }}
             variant="outline"
             size="sm"
-            disabled={isLoadingLogs || isLoadingHouseholds || isLoadingMainBattery}
+            disabled={isLoadingLogs || isLoadingCentralized || isLoadingMainBattery}
             data-testid="button-refresh-data"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoadingLogs || isLoadingHouseholds || isLoadingMainBattery) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoadingLogs || isLoadingCentralized || isLoadingMainBattery) ? 'animate-spin' : ''}`} />
             Refresh Data
           </Button>
         </div>
       </div>
 
       {/* Error States */}
-      {householdsError && (
+      {centralizedError && (
         <Card>
           <CardContent className="p-6">
             <div className="text-center py-4">
               <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-destructive" />
-              <p className="text-destructive font-medium">Failed to load households</p>
-              <p className="text-sm text-muted-foreground mb-4">{householdsError.message}</p>
+              <p className="text-destructive font-medium">Failed to load household data</p>
+              <p className="text-sm text-muted-foreground mb-4">{centralizedError.message}</p>
               <Button 
-                onClick={() => refetchHouseholds()} 
+                onClick={() => refetchCentralized()} 
                 variant="outline" 
                 size="sm"
                 data-testid="button-retry-households"
@@ -566,7 +548,7 @@ export default function Battery() {
       </Card>
 
       {/* Household Selection */}
-      {communityData?.households?.length > 0 && (
+      {centralizedData?.households?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -584,7 +566,7 @@ export default function Battery() {
                   <SelectValue placeholder="Select household" />
                 </SelectTrigger>
                 <SelectContent>
-                  {communityData.households.map((household: any) => (
+                  {centralizedData.households.map((household: any) => (
                     <SelectItem key={household.id} value={household.id}>
                       {household.name}
                     </SelectItem>
@@ -594,7 +576,7 @@ export default function Battery() {
             </div>
 
             {selectedHousehold && (() => {
-              const selectedHouseholdData = communityData.households.find((h: any) => h.id === selectedHousehold);
+              const selectedHouseholdData = centralizedData.households.find((h: any) => h.id === selectedHousehold);
               if (!selectedHouseholdData) return null;
               
               // Generate battery data for the selected household based on their metrics

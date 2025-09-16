@@ -73,6 +73,7 @@ export default function HouseholdSetup() {
       queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/data'] });
       form.reset();
       setActiveTab('existing');
       toast({
@@ -98,6 +99,7 @@ export default function HouseholdSetup() {
       queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/data'] });
       setEditingHousehold(null);
       form.reset();
       toast({
@@ -123,6 +125,7 @@ export default function HouseholdSetup() {
       queryClient.invalidateQueries({ queryKey: ['/api/households-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/forecasts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/data'] });
       toast({
         title: "Household deleted successfully",
         description: "The household has been removed from your account.",

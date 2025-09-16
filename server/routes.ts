@@ -637,101 +637,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Community Energy Insights API - Dummy household data for dashboard
-  app.get("/api/community", authenticateToken, async (req, res) => {
+  // Centralized data endpoint that generates comprehensive data from households
+  app.get("/api/data", authenticateToken, async (req, res) => {
     try {
-      // Generate consistent dummy household data for the Community Energy Insights dashboard
-      const dummyHouseholds = [
-        {
-          id: "hh-001",
-          name: "Raj Sharma's Home",
-          devices: 12,
-          dailyConsumption: 28.5,
-          renewableShare: 84,
-          batteryCapacity: 15.2,
-          anomalyCount: 1
-        },
-        {
-          id: "hh-002", 
-          name: "Priya Patel's Home",
-          devices: 8,
-          dailyConsumption: 19.7,
-          renewableShare: 78,
-          batteryCapacity: 12.8,
-          anomalyCount: 0
-        },
-        {
-          id: "hh-003",
-          name: "Amit Kumar's Home", 
-          devices: 15,
-          dailyConsumption: 32.1,
-          renewableShare: 72,
-          batteryCapacity: 18.5,
-          anomalyCount: 3
-        },
-        {
-          id: "hh-004",
-          name: "Neha Singh's Home",
-          devices: 10,
-          dailyConsumption: 24.8,
-          renewableShare: 89,
-          batteryCapacity: 14.0,
-          anomalyCount: 0
-        },
-        {
-          id: "hh-005",
-          name: "Vikram Malhotra's Home",
-          devices: 14,
-          dailyConsumption: 30.2,
-          renewableShare: 65,
-          batteryCapacity: 16.7,
-          anomalyCount: 2
-        },
-        {
-          id: "hh-006",
-          name: "Sneha Gupta's Home",
-          devices: 9,
-          dailyConsumption: 21.4,
-          renewableShare: 91,
-          batteryCapacity: 13.5,
-          anomalyCount: 0
-        },
-        {
-          id: "hh-007",
-          name: "Rohit Verma's Home",
-          devices: 11,
-          dailyConsumption: 26.9,
-          renewableShare: 76,
-          batteryCapacity: 15.8,
-          anomalyCount: 1
-        },
-        {
-          id: "hh-008",
-          name: "Anjali Mehta's Home",
-          devices: 13,
-          dailyConsumption: 29.3,
-          renewableShare: 82,
-          batteryCapacity: 17.2,
-          anomalyCount: 2
+      const user = (req as AuthenticatedRequest).user;
+      
+      // Get all households for the user
+      const households = await storage.getHouseholdsByUserId(user.userId);
+      
+      if (households.length === 0) {
+        return res.json({
+          households: [],
+          summary: {
+            totalHouseholds: 0,
+            totalEnergyConsumption: 0,
+            totalRenewableContribution: 0,
+            totalBatteryStorage: 0
+          }
+        });
+      }
+
+      // Generate comprehensive data for each household with auto-filled defaults
+      const enrichedHouseholds = await Promise.all(households.map(async (household: any, index: number) => {
+        // Get devices for this household
+        const devices = await storage.getDevicesByHouseholdId(household.id);
+        
+        // Auto-generate missing attributes with realistic defaults
+        const currentHour = new Date().getHours();
+        const currentMinute = new Date().getMinutes();
+        
+        // Calculate renewable share based on PV capacity
+        const baseRenewableShare = Math.min(95, 45 + (household.pvKw * 8)); // Higher PV = higher renewable share
+        const renewableShare = Math.round(baseRenewableShare + (Math.sin(household.id.length) * 15));
+        
+        // Calculate daily consumption based on devices and household size
+        const baseConsumption = devices.reduce((sum: number, device: any) => sum + (device.typicalKwh || 2), 8);
+        const dailyConsumption = Math.round((baseConsumption * (0.8 + Math.random() * 0.4)) * 10) / 10;
+        
+        // Auto-generate battery capacity based on PV capacity and consumption
+        const batteryCapacity = Math.round((household.pvKw * 2.5 + dailyConsumption * 0.6) * 10) / 10;
+        
+        // Generate anomaly count based on device count and randomness
+        const anomalyCount = Math.floor(Math.random() * Math.min(3, Math.floor(devices.length / 4)));
+        
+        // Generate battery health data
+        let baseSoC = 60 + (index * 15) % 40; // 60-85% range varied by household
+        
+        // Adjust SoC based on time of day
+        if (currentHour >= 6 && currentHour <= 18) {
+          // Daytime: charging from solar
+          baseSoC += Math.sin((currentHour - 6) / 12 * Math.PI) * 15;
+        } else {
+          // Nighttime: discharging
+          baseSoC -= Math.sin((currentHour + 6) / 12 * Math.PI) * 10;
         }
-      ];
+        
+        // Ensure SoC stays within realistic bounds
+        const stateOfCharge = Math.max(15, Math.min(95, baseSoC + (Math.random() - 0.5) * 5));
+        
+        // Calculate battery cycles and health
+        const dailyCycles = Math.round((1 + Math.random() * 0.5) * 10) / 10; // 1.0-1.5 cycles per day
+        const totalCycles = Math.floor(dailyCycles * 365 * (1 + Math.random())); // Estimated total cycles
+        const currentDoD = Math.round((100 - stateOfCharge) * 0.8 * 10) / 10; // Depth of discharge
+        
+        // Health status based on SoC and usage patterns
+        let healthStatus = 'good';
+        if (stateOfCharge < 20 || dailyCycles > 1.3 || totalCycles > 1500) {
+          healthStatus = 'fair';
+        } else if (stateOfCharge < 10 || dailyCycles > 1.5 || totalCycles > 2000) {
+          healthStatus = 'poor';
+        }
+
+        return {
+          id: household.id,
+          name: household.name,
+          location: {
+            latitude: household.latitude,
+            longitude: household.longitude
+          },
+          // Device data
+          devices: devices.length,
+          deviceList: devices.map((device: any) => ({
+            id: device.id,
+            name: device.name,
+            typicalKwh: device.typicalKwh,
+            flexible: device.flexible,
+            status: anomalyCount > 0 && Math.random() < 0.3 ? 'warning' : 'normal'
+          })),
+          // Energy data
+          dailyConsumption,
+          renewableShare,
+          pvCapacity: household.pvKw,
+          // Battery data
+          batteryCapacity,
+          battery: {
+            stateOfCharge: Math.round(stateOfCharge * 10) / 10,
+            healthStatus,
+            currentDoD,
+            totalCycles,
+            dailyCycles,
+            lastAlert: totalCycles > 1800 ? 'High cycle count detected' : undefined
+          },
+          // System data
+          anomalyCount,
+          tariff: {
+            perKwh: household.tariffPerKwh,
+            currency: household.tariffCurrency
+          },
+          co2Factor: household.co2FactorKgPerKwh,
+          // Additional computed metrics
+          monthlySavings: Math.round(dailyConsumption * renewableShare / 100 * household.tariffPerKwh * 30 * 10) / 10,
+          co2Avoided: Math.round(dailyConsumption * renewableShare / 100 * household.co2FactorKgPerKwh * 30 * 10) / 10
+        };
+      }));
 
       // Calculate summary metrics
-      const totalHouseholds = dummyHouseholds.length;
-      const totalEnergyConsumption = dummyHouseholds.reduce((sum, h) => sum + h.dailyConsumption, 0);
-      const totalRenewableContribution = dummyHouseholds.reduce((sum, h) => 
+      const totalHouseholds = enrichedHouseholds.length;
+      const totalEnergyConsumption = enrichedHouseholds.reduce((sum, h) => sum + h.dailyConsumption, 0);
+      const totalRenewableContribution = enrichedHouseholds.reduce((sum, h) => 
         sum + (h.dailyConsumption * h.renewableShare / 100), 0);
-      const totalBatteryStorage = dummyHouseholds.reduce((sum, h) => sum + h.batteryCapacity, 0);
+      const totalBatteryStorage = enrichedHouseholds.reduce((sum, h) => sum + h.batteryCapacity, 0);
+      const averageRenewableShare = totalHouseholds > 0 ? 
+        enrichedHouseholds.reduce((sum, h) => sum + h.renewableShare, 0) / totalHouseholds : 0;
 
       res.json({
-        households: dummyHouseholds,
+        households: enrichedHouseholds,
         summary: {
           totalHouseholds,
           totalEnergyConsumption: Math.round(totalEnergyConsumption * 10) / 10,
           totalRenewableContribution: Math.round(totalRenewableContribution * 10) / 10,
-          totalBatteryStorage: Math.round(totalBatteryStorage * 10) / 10
+          totalBatteryStorage: Math.round(totalBatteryStorage * 10) / 10,
+          averageRenewableShare: Math.round(averageRenewableShare * 10) / 10,
+          totalDevices: enrichedHouseholds.reduce((sum, h) => sum + h.devices, 0),
+          totalAnomalies: enrichedHouseholds.reduce((sum, h) => sum + h.anomalyCount, 0)
         }
       });
+    } catch (error) {
+      console.error('Get centralized data error:', error);
+      res.status(500).json({ message: 'Failed to fetch centralized data' });
+    }
+  });
+
+  // Legacy Community Energy Insights API - Now redirects to centralized data
+  app.get("/api/community", authenticateToken, async (req, res) => {
+    try {
+      // Redirect to the centralized data endpoint
+      const dataResponse = await fetch(`${req.protocol}://${req.get('host')}/api/data`, {
+        headers: {
+          'Authorization': req.headers.authorization || ''
+        }
+      });
+      const data = await dataResponse.json();
+      res.json(data);
     } catch (error) {
       console.error('Get community energy insights error:', error);
       res.status(500).json({ message: 'Failed to fetch community energy insights' });
@@ -1361,64 +1418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Household Battery Status API - For different households battery overview
-  app.get("/api/households-battery-status", authenticateToken, async (req, res) => {
-    try {
-      const user = (req as AuthenticatedRequest).user;
-      const households = await storage.getHouseholdsByUserId(user.userId);
-      
-      // Mock household names and create realistic battery data consistent with dashboard consumption
-      const householdBatteryStatus = households.map((household: any, index: number) => {
-        const currentHour = new Date().getHours();
-        const currentMinute = new Date().getMinutes();
-        
-        // Base SoC varies by household characteristics
-        let baseSoC = 60 + (index * 15) % 40; // 60-85% range varied by household
-        
-        // Adjust SoC based on time of day to be consistent with consumption patterns
-        if (currentHour >= 6 && currentHour <= 18) {
-          // Daytime: charging from solar
-          baseSoC += Math.sin((currentHour - 6) / 12 * Math.PI) * 15;
-        } else {
-          // Nighttime: discharging
-          baseSoC -= Math.sin((currentHour + 6) / 12 * Math.PI) * 10;
-        }
-        
-        // Ensure SoC stays within realistic bounds
-        const stateOfCharge = Math.max(15, Math.min(95, baseSoC + (Math.random() - 0.5) * 5));
-        
-        // Calculate daily cycles based on usage patterns
-        const dailyCycles = Math.round((1 + Math.random() * 0.5) * 10) / 10; // 1.0-1.5 cycles per day
-        
-        // Health status based on SoC and usage patterns
-        let healthStatus = 'Good';
-        if (stateOfCharge < 20 || dailyCycles > 1.3) {
-          healthStatus = 'Warning';
-        } else if (stateOfCharge < 10 || dailyCycles > 1.5) {
-          healthStatus = 'Fault';
-        }
-        
-        return {
-          householdId: household.id,
-          householdName: household.name,
-          stateOfCharge: Math.round(stateOfCharge * 10) / 10,
-          healthStatus,
-          dailyCycles,
-          lastUpdated: new Date().toISOString(),
-          // Additional details for consistency with dashboard consumption
-          batteryCapacity: household.batteryCapacityKwh || 10.0, // kWh
-          maxDoD: 80, // Maximum depth of discharge %
-          currentMode: currentHour >= 10 && currentHour <= 16 ? 'charging' : 
-                      currentHour >= 18 && currentHour <= 22 ? 'discharging' : 'idle'
-        };
-      });
-      
-      res.json(householdBatteryStatus);
-    } catch (error) {
-      console.error('Get household battery status error:', error);
-      res.status(500).json({ message: 'Failed to fetch household battery status' });
-    }
-  });
+  // Legacy endpoint removed - battery status now available in /api/data
 
   // Schedule Management Routes
   app.get("/api/schedule", authenticateToken, async (req, res) => {

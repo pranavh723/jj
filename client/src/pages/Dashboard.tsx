@@ -184,25 +184,54 @@ export default function Dashboard() {
     })) : [];
 
   // Mock community leaderboard data (would come from API in real implementation)
-  const communityData = {
-    renewableShareLeaders: [
-      { rank: 1, name: 'Raj Sharma', unit: 'Flat 302', percentage: 84, points: 120 },
-      { rank: 2, name: 'Priya Patel', unit: 'Flat 105', percentage: 78, points: 95 },
-      { rank: 3, name: 'Amit Kumar', unit: 'Flat 201', percentage: 72, points: 80 },
-    ],
-    costSavingsLeaders: [
-      { rank: 1, name: 'Priya Patel', unit: 'Flat 105', amount: 2340, points: 0 },
-      { rank: 2, name: 'Raj Sharma', unit: 'Flat 302', amount: 2180, points: 0 },
-      { rank: 3, name: 'Neha Singh', unit: 'Flat 404', amount: 1950, points: 0 },
-    ],
-    co2ReductionLeaders: [
-      { rank: 1, name: 'Raj Sharma', unit: 'Flat 302', co2: 156, points: 0 },
-      { rank: 2, name: 'Amit Kumar', unit: 'Flat 201', co2: 142, points: 0 },
-      { rank: 3, name: 'Priya Patel', unit: 'Flat 105', co2: 138, points: 0 },
-    ],
-    totalSavings: '₹18,450',
-    totalCO2: '1,234 kg',
-    avgRenewableShare: '68%'
+  // Fetch centralized data for community insights
+  const { data: centralizedData } = useQuery<any>({
+    queryKey: ['/api/data'],
+    enabled: !!user,
+  });
+
+  // Generate community data from centralized data
+  const communityData = centralizedData?.households ? {
+    renewableShareLeaders: [...centralizedData.households]
+      .sort((a, b) => b.renewableShare - a.renewableShare)
+      .slice(0, 3)
+      .map((household, index) => ({
+        rank: index + 1,
+        name: household.name,
+        unit: `Location ${household.location.latitude.toFixed(2)}, ${household.location.longitude.toFixed(2)}`,
+        percentage: household.renewableShare,
+        points: Math.floor(household.renewableShare * 1.5)
+      })),
+    costSavingsLeaders: [...centralizedData.households]
+      .sort((a, b) => b.monthlySavings - a.monthlySavings)
+      .slice(0, 3)
+      .map((household, index) => ({
+        rank: index + 1,
+        name: household.name,
+        unit: `Location ${household.location.latitude.toFixed(2)}, ${household.location.longitude.toFixed(2)}`,
+        amount: Math.floor(household.monthlySavings),
+        points: 0
+      })),
+    co2ReductionLeaders: [...centralizedData.households]
+      .sort((a, b) => b.co2Avoided - a.co2Avoided)
+      .slice(0, 3)
+      .map((household, index) => ({
+        rank: index + 1,
+        name: household.name,
+        unit: `Location ${household.location.latitude.toFixed(2)}, ${household.location.longitude.toFixed(2)}`,
+        co2: Math.floor(household.co2Avoided),
+        points: 0
+      })),
+    totalSavings: `₹${centralizedData.summary?.totalEnergyConsumption ? Math.floor(centralizedData.summary.totalEnergyConsumption * 5) : 0}`,
+    totalCO2: `${centralizedData.summary?.averageRenewableShare ? Math.floor(centralizedData.summary.averageRenewableShare * 10) : 0} kg`,
+    avgRenewableShare: `${centralizedData.summary?.averageRenewableShare ? Math.floor(centralizedData.summary.averageRenewableShare) : 0}%`
+  } : {
+    renewableShareLeaders: [],
+    costSavingsLeaders: [],
+    co2ReductionLeaders: [],
+    totalSavings: '₹0',
+    totalCO2: '0 kg',
+    avgRenewableShare: '0%'
   };
 
   if (isDashboardLoading) {

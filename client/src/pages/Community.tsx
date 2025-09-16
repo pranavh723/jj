@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -35,9 +36,12 @@ interface CommunityData {
 }
 
 export default function Community() {
-  // Fetch community energy insights data
+  const { user } = useAuth();
+  
+  // Fetch centralized data for community insights
   const { data: communityData, isLoading } = useQuery<CommunityData>({
-    queryKey: ['/api/community'],
+    queryKey: ['/api/data'],
+    enabled: !!user,
   });
 
   if (isLoading) {
@@ -82,7 +86,14 @@ export default function Community() {
     );
   }
 
-  const { households, summary } = communityData;
+  // Extract data with safe fallbacks
+  const households = communityData?.households || [];
+  const summary = communityData?.summary || {
+    totalHouseholds: 0,
+    totalEnergyConsumption: 0,
+    totalRenewableContribution: 0,
+    totalBatteryStorage: 0
+  };
 
   // Sort households by renewable share for leaderboard
   const sortedByEfficiency = [...households].sort((a, b) => b.renewableShare - a.renewableShare);
