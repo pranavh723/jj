@@ -175,20 +175,28 @@ export default function Appliances() {
     }
   };
 
+  // Define device interface for type safety
+  interface DeviceStatus {
+    name: string;
+    severity: 'normal' | 'warning' | 'critical';
+    timestamp: number;
+    powerWatts: number;
+  }
+
   // Group devices by their latest status
   const getDevicesByLatestStatus = () => {
     if (!deviceStatusData || deviceStatusData.length === 0) {
-      return { normal: [], warning: [], critical: [] };
+      return { normal: [] as DeviceStatus[], warning: [] as DeviceStatus[], critical: [] as DeviceStatus[] };
     }
 
     // Group by appliance name and get latest status for each device
-    const deviceMap = new Map();
+    const deviceMap = new Map<string, DeviceStatus>();
     
     deviceStatusData.forEach((status: any) => {
       const deviceName = status.applianceReading?.applianceName || 'Unknown Device';
       const timestamp = new Date(status.timestamp).getTime();
       
-      if (!deviceMap.has(deviceName) || deviceMap.get(deviceName).timestamp < timestamp) {
+      if (!deviceMap.has(deviceName) || deviceMap.get(deviceName)!.timestamp < timestamp) {
         deviceMap.set(deviceName, {
           name: deviceName,
           severity: status.severity,
@@ -199,7 +207,11 @@ export default function Appliances() {
     });
 
     // Group by severity
-    const groupedDevices = { normal: [], warning: [], critical: [] };
+    const groupedDevices: { normal: DeviceStatus[], warning: DeviceStatus[], critical: DeviceStatus[] } = { 
+      normal: [], 
+      warning: [], 
+      critical: [] 
+    };
     
     deviceMap.forEach((device) => {
       if (device.severity === 'normal') {
