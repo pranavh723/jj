@@ -49,7 +49,7 @@ export interface IStorage {
   // Recommendations
   getRecommendations(householdId: string, startTime: Date, endTime: Date): Promise<Recommendation[]>;
   createRecommendation(recommendation: InsertRecommendation): Promise<Recommendation>;
-  getLatestRecommendations(householdId: string): Promise<Recommendation[]>;
+  getLatestRecommendations(householdId: string): Promise<(Recommendation & { deviceName: string })[]>;
   deleteRecommendationsByDeviceId(deviceId: string): Promise<void>;
 
   // Communities
@@ -240,13 +240,25 @@ export class DatabaseStorage implements IStorage {
     return newRec;
   }
 
-  async getLatestRecommendations(householdId: string): Promise<Recommendation[]> {
+  async getLatestRecommendations(householdId: string): Promise<(Recommendation & { deviceName: string })[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    return await db.select().from(recommendations)
+    return await db.select({
+      id: recommendations.id,
+      householdId: recommendations.householdId,
+      deviceId: recommendations.deviceId,
+      createdTs: recommendations.createdTs,
+      startTs: recommendations.startTs,
+      endTs: recommendations.endTs,
+      reason: recommendations.reason,
+      estimatedSavings: recommendations.estimatedSavings,
+      estimatedCo2Avoided: recommendations.estimatedCo2Avoided,
+      deviceName: devices.name,
+    }).from(recommendations)
+      .innerJoin(devices, eq(recommendations.deviceId, devices.id))
       .where(and(
         eq(recommendations.householdId, householdId),
         gte(recommendations.startTs, today),
