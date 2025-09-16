@@ -42,8 +42,8 @@ export class SchedulerService {
       for (let i = 0; i < Math.min(3, households.length); i++) {
         const randomHousehold = households[Math.floor(Math.random() * households.length)];
         
-        // Generate mock appliance reading data
-        const applianceData = await this.generateMockApplianceData();
+        // Generate mock appliance reading data based on actual devices in the household
+        const applianceData = await this.generateMockApplianceData(randomHousehold.id);
         await this.ingestApplianceReading(randomHousehold.userId, applianceData);
         
         // Generate mock battery data (30% chance)
@@ -146,30 +146,55 @@ export class SchedulerService {
     console.log('Daily notifications would be sent here if Telegram is configured');
   }
 
-  private async generateMockApplianceData(): Promise<any> {
-    const applianceNames = [
-      'Refrigerator', 'Air Conditioner', 'Washing Machine', 'Dishwasher', 
-      'Microwave', 'Water Heater', 'Television', 'Computer', 'LED Lights', 
-      'Ceiling Fan', 'Electric Oven', 'Toaster', 'Coffee Maker', 'Vacuum Cleaner'
-    ];
+  private async generateMockApplianceData(householdId: string): Promise<any> {
+    // Get actual devices for this household
+    const devices = await storage.getDevicesByHouseholdId(householdId);
     
-    const randomAppliance = applianceNames[Math.floor(Math.random() * applianceNames.length)];
+    if (devices.length === 0) {
+      // Fallback to default appliance names if no devices exist
+      const fallbackApplianceNames = [
+        'Refrigerator', 'Air Conditioner', 'Washing Machine', 'Dishwasher', 
+        'Microwave', 'Water Heater', 'Television', 'Computer', 'LED Lights', 
+        'Ceiling Fan', 'Electric Oven', 'Toaster', 'Coffee Maker', 'Vacuum Cleaner'
+      ];
+      
+      const randomAppliance = fallbackApplianceNames[Math.floor(Math.random() * fallbackApplianceNames.length)];
+      
+      // Different power ranges for different appliances
+      let powerRange;
+      if (randomAppliance === 'Air Conditioner') powerRange = [1200, 2500];
+      else if (randomAppliance === 'Water Heater') powerRange = [2000, 3000];
+      else if (randomAppliance === 'Refrigerator') powerRange = [100, 300];
+      else if (randomAppliance === 'Washing Machine') powerRange = [500, 1500];
+      else if (randomAppliance === 'Microwave') powerRange = [700, 1200];
+      else if (randomAppliance === 'Television') powerRange = [100, 250];
+      else if (randomAppliance === 'LED Lights') powerRange = [10, 50];
+      else powerRange = [50, 800];
+      
+      const powerWatts = Math.round(powerRange[0] + Math.random() * (powerRange[1] - powerRange[0]));
+      
+      return {
+        applianceName: randomAppliance,
+        powerWatts: powerWatts,
+        timestamp: new Date()
+      };
+    }
     
-    // Different power ranges for different appliances
-    let powerRange;
-    if (randomAppliance === 'Air Conditioner') powerRange = [1200, 2500];
-    else if (randomAppliance === 'Water Heater') powerRange = [2000, 3000];
-    else if (randomAppliance === 'Refrigerator') powerRange = [100, 300];
-    else if (randomAppliance === 'Washing Machine') powerRange = [500, 1500];
-    else if (randomAppliance === 'Microwave') powerRange = [700, 1200];
-    else if (randomAppliance === 'Television') powerRange = [100, 250];
-    else if (randomAppliance === 'LED Lights') powerRange = [10, 50];
-    else powerRange = [50, 800];
+    // Use actual device from the household
+    const randomDevice = devices[Math.floor(Math.random() * devices.length)];
     
-    const powerWatts = Math.round(powerRange[0] + Math.random() * (powerRange[1] - powerRange[0]));
+    // Generate power consumption based on the device's typical consumption
+    // Convert kWh to watts (assuming 1 hour of operation)
+    const baseWatts = randomDevice.typicalKwh * 1000; // kWh to Wh per hour
+    
+    // Add some realistic variation (±20% from typical consumption)
+    const variation = 0.2;
+    const minWatts = Math.max(1, baseWatts * (1 - variation));
+    const maxWatts = baseWatts * (1 + variation);
+    const powerWatts = Math.round(minWatts + Math.random() * (maxWatts - minWatts));
     
     return {
-      applianceName: randomAppliance,
+      applianceName: randomDevice.name,
       powerWatts: powerWatts,
       timestamp: new Date()
     };
