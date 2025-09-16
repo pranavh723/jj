@@ -779,11 +779,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/readings", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
+      const householdId = req.query.household_id as string;
+      
       // Get readings from the last 30 days
       const endTime = new Date();
       const startTime = new Date(endTime.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const readings = await storage.getApplianceReadings(user.userId, startTime, endTime);
-      res.json(readings);
+      
+      if (householdId) {
+        // Verify household belongs to user
+        const household = await storage.getHousehold(householdId);
+        if (!household || household.userId !== user.userId) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+        
+        // For household filtering, we'll filter by appliance names that match the household's devices
+        // Get all devices for this household
+        const devices = await storage.getDevicesByHouseholdId(householdId);
+        const deviceNames = devices.map(device => device.name);
+        
+        // Get all user readings and filter by device names
+        const allReadings = await storage.getApplianceReadings(user.userId, startTime, endTime);
+        const filteredReadings = allReadings.filter(reading => 
+          deviceNames.some(deviceName => 
+            reading.applianceName.toLowerCase().includes(deviceName.toLowerCase()) ||
+            deviceName.toLowerCase().includes(reading.applianceName.toLowerCase())
+          )
+        );
+        res.json(filteredReadings);
+      } else {
+        const readings = await storage.getApplianceReadings(user.userId, startTime, endTime);
+        res.json(readings);
+      }
     } catch (error) {
       console.error('Get readings error:', error);
       res.status(500).json({ message: 'Failed to fetch readings' });
@@ -817,8 +843,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/anomalies", authenticateToken, async (req, res) => {
     try {
       const user = (req as AuthenticatedRequest).user;
-      const anomalies = await storage.getApplianceAnomalies(user.userId);
-      res.json(anomalies);
+      const householdId = req.query.household_id as string;
+      
+      if (householdId) {
+        // Verify household belongs to user
+        const household = await storage.getHousehold(householdId);
+        if (!household || household.userId !== user.userId) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+        
+        // Get all anomalies for the user first
+        const allAnomalies = await storage.getApplianceAnomalies(user.userId);
+        
+        // Filter anomalies by household's device names
+        const devices = await storage.getDevicesByHouseholdId(householdId);
+        const deviceNames = devices.map(device => device.name);
+        
+        const filteredAnomalies = allAnomalies.filter((anomaly: any) => {
+          const applianceName = anomaly.applianceReading?.applianceName || '';
+          return deviceNames.some(deviceName => 
+            applianceName.toLowerCase().includes(deviceName.toLowerCase()) ||
+            deviceName.toLowerCase().includes(applianceName.toLowerCase())
+          );
+        });
+        
+        res.json(filteredAnomalies);
+      } else {
+        const anomalies = await storage.getApplianceAnomalies(user.userId);
+        res.json(anomalies);
+      }
     } catch (error) {
       console.error('Get anomalies error:', error);
       res.status(500).json({ message: 'Failed to fetch anomalies' });
