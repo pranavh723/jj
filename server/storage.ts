@@ -124,32 +124,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteHousehold(id: string): Promise<void> {
-    // Delete all related data in the correct order to avoid foreign key constraint issues
-    
-    // Delete recommendations first (references both household and devices)
-    await db.delete(recommendations).where(eq(recommendations.householdId, id));
-    
-    // Delete devices associated with this household
-    await db.delete(devices).where(eq(devices.householdId, id));
-    
-    // Delete weather data
-    await db.delete(weatherHourly).where(eq(weatherHourly.householdId, id));
-    
-    // Delete PV forecast data
-    await db.delete(pvForecastHourly).where(eq(pvForecastHourly.householdId, id));
-    
-    // Delete meter readings
-    await db.delete(meterReadings).where(eq(meterReadings.householdId, id));
-    
-    // Delete household energy data
-    await db.delete(householdEnergy).where(eq(householdEnergy.householdId, id));
-    
-    // Delete energy trades where this household is seller or buyer
-    await db.delete(energyTrades).where(eq(energyTrades.sellerHouseholdId, id));
-    await db.delete(energyTrades).where(eq(energyTrades.buyerHouseholdId, id));
-    
-    // Finally delete the household itself
-    await db.delete(households).where(eq(households.id, id));
+    try {
+      // Delete all related data in the correct order to avoid foreign key constraint issues
+      
+      // Delete recommendations first (references both household and devices)
+      await db.delete(recommendations).where(eq(recommendations.householdId, id));
+      
+      // Delete devices associated with this household
+      await db.delete(devices).where(eq(devices.householdId, id));
+      
+      // Delete weather data
+      await db.delete(weatherHourly).where(eq(weatherHourly.householdId, id));
+      
+      // Delete PV forecast data
+      await db.delete(pvForecastHourly).where(eq(pvForecastHourly.householdId, id));
+      
+      // Delete meter readings
+      await db.delete(meterReadings).where(eq(meterReadings.householdId, id));
+      
+      // Delete household energy data
+      await db.delete(householdEnergy).where(eq(householdEnergy.householdId, id));
+      
+      // Delete energy trades where this household is seller or buyer
+      // Use try-catch for energy trades in case the table structure is different
+      try {
+        await db.delete(energyTrades).where(eq(energyTrades.sellerHouseholdId, id));
+        await db.delete(energyTrades).where(eq(energyTrades.buyerHouseholdId, id));
+      } catch (energyTradeError) {
+        console.warn('Energy trades deletion failed, table may not exist yet:', energyTradeError);
+        // Continue with household deletion even if energy trades fail
+      }
+      
+      // Finally delete the household itself
+      await db.delete(households).where(eq(households.id, id));
+    } catch (error) {
+      console.error('Delete household error:', error);
+      throw new Error('Failed to delete household');
+    }
   }
 
   async getDevice(id: string): Promise<Device | undefined> {
