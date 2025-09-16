@@ -353,108 +353,149 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Different Households Section */}
+      {/* Household Selector */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center space-x-2">
             <Home className="w-5 h-5" />
-            <span>Different Households</span>
+            <span>Select Household</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {householdMetricsError ? (
-            <div className="text-center py-8 text-destructive">
-              <AlertCircle className="w-12 h-12 mx-auto mb-4" />
-              <p>Failed to load household metrics</p>
-              <p className="text-sm">{householdMetricsError.message}</p>
+          <div className="space-y-4">
+            {/* Household Selector Dropdown */}
+            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-4">
+              <label className="text-sm font-medium">Choose household to view:</label>
+              <div className="flex-1 max-w-xs">
+                <select
+                  value={currentHousehold || ''}
+                  onChange={(e) => setCurrentHousehold(e.target.value)}
+                  className="w-full p-2 border border-input rounded-md bg-background text-foreground"
+                  data-testid="select-household"
+                >
+                  {households.map((household) => (
+                    <option key={household.id} value={household.id}>
+                      {household.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ) : isLoadingHouseholdMetrics ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-              <span>Loading households...</span>
-            </div>
-          ) : householdMetrics.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p>No households found.</p>
-              <p className="text-sm">Set up your first household to start monitoring energy usage.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {householdMetrics.map((household) => (
-                <Card key={household.id} className="card-hover border-2 hover:border-primary/20 transition-all duration-200">
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      {/* Household Name */}
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-foreground" data-testid={`household-name-${household.id}`}>
-                          {household.name}
-                        </h3>
-                        <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-                      </div>
-                      
-                      {/* Daily Consumption */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Daily Consumption</span>
-                          <span className="text-sm font-medium" data-testid={`daily-consumption-${household.id}`}>
-                            {household.daily.consumption.toFixed(1)} kWh
-                          </span>
-                        </div>
-                        
-                        {/* Monthly Consumption */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Monthly Consumption</span>
-                          <span className="text-sm font-medium" data-testid={`monthly-consumption-${household.id}`}>
-                            {household.monthly.consumption.toFixed(1)} kWh
-                          </span>
-                        </div>
-                        
-                        {/* Renewable Usage */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Renewable Usage</span>
-                          <div className="flex items-center space-x-1">
-                            <Leaf className="w-3 h-3 text-primary" />
-                            <span className="text-sm font-medium text-primary" data-testid={`renewable-percentage-${household.id}`}>
-                              {household.daily.renewablePercentage.toFixed(1)}%
-                            </span>
+
+            {/* Selected Household Details */}
+            {currentHousehold && householdMetrics.length > 0 && (
+              <div className="mt-6">
+                {(() => {
+                  const selectedHouseholdMetrics = householdMetrics.find(hm => hm.id === currentHousehold);
+                  if (!selectedHouseholdMetrics) return null;
+                  
+                  return (
+                    <Card className="border-2 border-primary/20">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Household Name */}
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-foreground" data-testid={`selected-household-name-${selectedHouseholdMetrics.id}`}>
+                              {selectedHouseholdMetrics.name}
+                            </h3>
+                            <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                          </div>
+                          
+                          {/* Metrics Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Daily Consumption */}
+                            <div className="space-y-2">
+                              <div className="text-center p-3 bg-secondary/10 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Daily Consumption</p>
+                                <p className="text-lg font-bold" data-testid={`selected-daily-consumption-${selectedHouseholdMetrics.id}`}>
+                                  {selectedHouseholdMetrics.daily.consumption.toFixed(1)} kWh
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Monthly Consumption */}
+                            <div className="space-y-2">
+                              <div className="text-center p-3 bg-secondary/10 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Monthly Consumption</p>
+                                <p className="text-lg font-bold" data-testid={`selected-monthly-consumption-${selectedHouseholdMetrics.id}`}>
+                                  {selectedHouseholdMetrics.monthly.consumption.toFixed(1)} kWh
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Renewable Usage */}
+                            <div className="space-y-2">
+                              <div className="text-center p-3 bg-primary/10 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Renewable Usage</p>
+                                <div className="flex items-center justify-center space-x-1">
+                                  <Leaf className="w-4 h-4 text-primary" />
+                                  <p className="text-lg font-bold text-primary" data-testid={`selected-renewable-percentage-${selectedHouseholdMetrics.id}`}>
+                                    {selectedHouseholdMetrics.daily.renewablePercentage.toFixed(1)}%
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Navigation Buttons */}
+                          <div className="flex space-x-2 pt-4">
+                            <Link href="/appliances" className="flex-1">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full"
+                                data-testid={`button-appliances-${selectedHouseholdMetrics.id}`}
+                              >
+                                <Cpu className="w-4 h-4 mr-2" />
+                                Appliances
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                              </Button>
+                            </Link>
+                            <Link href="/battery" className="flex-1">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full"
+                                data-testid={`button-battery-${selectedHouseholdMetrics.id}`}
+                              >
+                                <BatteryIcon className="w-4 h-4 mr-2" />
+                                Battery
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                              </Button>
+                            </Link>
                           </div>
                         </div>
-                      </div>
-                      
-                      {/* Navigation Buttons */}
-                      <div className="flex space-x-2 pt-2">
-                        <Link href="/appliances">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 text-xs"
-                            data-testid={`button-appliances-${household.id}`}
-                          >
-                            <Cpu className="w-3 h-3 mr-1" />
-                            Appliances
-                            <ArrowRight className="w-3 h-3 ml-1" />
-                          </Button>
-                        </Link>
-                        <Link href="/battery">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 text-xs"
-                            data-testid={`button-battery-${household.id}`}
-                          >
-                            <BatteryIcon className="w-3 h-3 mr-1" />
-                            Battery
-                            <ArrowRight className="w-3 h-3 ml-1" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Loading/Error States */}
+            {householdMetricsError && (
+              <div className="text-center py-8 text-destructive">
+                <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+                <p>Failed to load household metrics</p>
+                <p className="text-sm">{householdMetricsError.message}</p>
+              </div>
+            )}
+
+            {isLoadingHouseholdMetrics && (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                <span>Loading households...</span>
+              </div>
+            )}
+
+            {householdMetrics.length === 0 && !isLoadingHouseholdMetrics && !householdMetricsError && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p>No households found.</p>
+                <p className="text-sm">Set up your first household to start monitoring energy usage.</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
