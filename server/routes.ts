@@ -637,6 +637,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Community Energy Insights API - Dummy household data for dashboard
+  app.get("/api/community", authenticateToken, async (req, res) => {
+    try {
+      // Generate consistent dummy household data for the Community Energy Insights dashboard
+      const dummyHouseholds = [
+        {
+          id: "hh-001",
+          name: "Raj Sharma's Home",
+          devices: 12,
+          dailyConsumption: 28.5,
+          renewableShare: 84,
+          batteryCapacity: 15.2,
+          anomalyCount: 1
+        },
+        {
+          id: "hh-002", 
+          name: "Priya Patel's Home",
+          devices: 8,
+          dailyConsumption: 19.7,
+          renewableShare: 78,
+          batteryCapacity: 12.8,
+          anomalyCount: 0
+        },
+        {
+          id: "hh-003",
+          name: "Amit Kumar's Home", 
+          devices: 15,
+          dailyConsumption: 32.1,
+          renewableShare: 72,
+          batteryCapacity: 18.5,
+          anomalyCount: 3
+        },
+        {
+          id: "hh-004",
+          name: "Neha Singh's Home",
+          devices: 10,
+          dailyConsumption: 24.8,
+          renewableShare: 89,
+          batteryCapacity: 14.0,
+          anomalyCount: 0
+        },
+        {
+          id: "hh-005",
+          name: "Vikram Malhotra's Home",
+          devices: 14,
+          dailyConsumption: 30.2,
+          renewableShare: 65,
+          batteryCapacity: 16.7,
+          anomalyCount: 2
+        },
+        {
+          id: "hh-006",
+          name: "Sneha Gupta's Home",
+          devices: 9,
+          dailyConsumption: 21.4,
+          renewableShare: 91,
+          batteryCapacity: 13.5,
+          anomalyCount: 0
+        },
+        {
+          id: "hh-007",
+          name: "Rohit Verma's Home",
+          devices: 11,
+          dailyConsumption: 26.9,
+          renewableShare: 76,
+          batteryCapacity: 15.8,
+          anomalyCount: 1
+        },
+        {
+          id: "hh-008",
+          name: "Anjali Mehta's Home",
+          devices: 13,
+          dailyConsumption: 29.3,
+          renewableShare: 82,
+          batteryCapacity: 17.2,
+          anomalyCount: 2
+        }
+      ];
+
+      // Calculate summary metrics
+      const totalHouseholds = dummyHouseholds.length;
+      const totalEnergyConsumption = dummyHouseholds.reduce((sum, h) => sum + h.dailyConsumption, 0);
+      const totalRenewableContribution = dummyHouseholds.reduce((sum, h) => 
+        sum + (h.dailyConsumption * h.renewableShare / 100), 0);
+      const totalBatteryStorage = dummyHouseholds.reduce((sum, h) => sum + h.batteryCapacity, 0);
+
+      res.json({
+        households: dummyHouseholds,
+        summary: {
+          totalHouseholds,
+          totalEnergyConsumption: Math.round(totalEnergyConsumption * 10) / 10,
+          totalRenewableContribution: Math.round(totalRenewableContribution * 10) / 10,
+          totalBatteryStorage: Math.round(totalBatteryStorage * 10) / 10
+        }
+      });
+    } catch (error) {
+      console.error('Get community energy insights error:', error);
+      res.status(500).json({ message: 'Failed to fetch community energy insights' });
+    }
+  });
+
   // ===== NEW FEATURE ROUTES =====
   
   // Appliance Anomaly Detection Routes
