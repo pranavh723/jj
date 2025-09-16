@@ -21,7 +21,7 @@ import type { ApplianceReading, ApplianceAnomaly, InsertApplianceReading } from 
 import { insertApplianceReadingSchema } from '@shared/schema';
 import { z } from 'zod';
 
-interface AnomalyWithReading extends ApplianceAnomaly {
+interface DeviceStatusWithReading extends ApplianceAnomaly {
   applianceReading: ApplianceReading;
 }
 
@@ -56,13 +56,13 @@ export default function Appliances() {
     enabled: !!user,
   });
 
-  // Fetch appliance anomalies
+  // Fetch appliance device status
   const { 
-    data: anomalies = [], 
-    isLoading: isLoadingAnomalies,
-    error: anomaliesError,
-    refetch: refetchAnomalies 
-  } = useQuery<AnomalyWithReading[]>({
+    data: deviceStatusData = [], 
+    isLoading: isLoadingDeviceStatus,
+    error: deviceStatusError,
+    refetch: refetchDeviceStatus 
+  } = useQuery<DeviceStatusWithReading[]>({
     queryKey: ['/api/anomalies'],
     enabled: !!user,
   });
@@ -75,7 +75,7 @@ export default function Appliances() {
     onSuccess: () => {
       toast({
         title: "Reading Added",
-        description: "Appliance power reading has been recorded and analyzed for anomalies.",
+        description: "Appliance power reading has been recorded and device status analyzed.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/readings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/anomalies'] });
@@ -123,16 +123,58 @@ export default function Appliances() {
     }
   };
 
-  const getApplianceStats = () => {
-    const total = anomalies.length;
-    const critical = anomalies.filter(a => a.severity === 'critical').length;
-    const warnings = anomalies.filter(a => a.severity === 'warning').length;
-    const normal = anomalies.filter(a => a.severity === 'normal').length;
+  // Group devices by their latest status
+  const getDevicesByLatestStatus = () => {
+    if (!deviceStatusData || deviceStatusData.length === 0) {
+      return { normal: [], warning: [], critical: [] };
+    }
+
+    // Group by appliance name and get latest status for each device
+    const deviceMap = new Map();
+    
+    deviceStatusData.forEach((status: any) => {
+      const deviceName = status.applianceReading?.applianceName || 'Unknown Device';
+      const timestamp = new Date(status.timestamp).getTime();
+      
+      if (!deviceMap.has(deviceName) || deviceMap.get(deviceName).timestamp < timestamp) {
+        deviceMap.set(deviceName, {
+          name: deviceName,
+          severity: status.severity,
+          timestamp: timestamp,
+          powerWatts: status.applianceReading?.powerWatts || 0
+        });
+      }
+    });
+
+    // Group by severity
+    const groupedDevices = { normal: [], warning: [], critical: [] };
+    
+    deviceMap.forEach((device) => {
+      if (device.severity === 'normal') {
+        groupedDevices.normal.push(device);
+      } else if (device.severity === 'warning') {
+        groupedDevices.warning.push(device);
+      } else if (device.severity === 'critical') {
+        groupedDevices.critical.push(device);
+      }
+    });
+
+    return groupedDevices;
+  };
+
+  const getDeviceStatusStats = () => {
+    const devicesByStatus = getDevicesByLatestStatus();
+    const critical = devicesByStatus.critical.length;
+    const warnings = devicesByStatus.warning.length;
+    const normal = devicesByStatus.normal.length;
+    const total = critical + warnings + normal;
     
     return { total, critical, warnings, normal };
   };
 
-  const stats = getApplianceStats();
+  const devicesByStatus = getDevicesByLatestStatus();
+
+  const stats = getDeviceStatusStats();
 
   return (
     <div className="space-y-6">
@@ -141,17 +183,17 @@ export default function Appliances() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">AI Appliance Monitor</h1>
           <p className="text-muted-foreground">
-            Monitor your appliances and detect power consumption anomalies using AI
+            Monitor your appliances and track device status using AI-powered analysis
           </p>
         </div>
         <Button
-          onClick={() => refetchAnomalies()}
+          onClick={() => refetchDeviceStatus()}
           variant="outline"
           size="sm"
-          disabled={isLoadingAnomalies}
-          data-testid="button-refresh-anomalies"
+          disabled={isLoadingDeviceStatus}
+          data-testid="button-refresh-device-status"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingAnomalies ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingDeviceStatus ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -164,8 +206,8 @@ export default function Appliances() {
             <div className="flex items-center space-x-2">
               <Cpu className="w-5 h-5 text-primary" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Anomalies</p>
-                <p className="text-2xl font-bold" data-testid="text-total-anomalies">{stats.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Devices</p>
+                <p className="text-2xl font-bold" data-testid="text-total-devices">{stats.total}</p>
               </div>
             </div>
           </CardContent>
@@ -343,76 +385,169 @@ export default function Appliances() {
         </CardContent>
       </Card>
 
-      {/* Anomalies List */}
+      {/* Device Status Overview */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <TrendingUp className="w-5 h-5" />
-            <span>Recent Anomaly Detections</span>
+            <span>Device Status Overview</span>
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Monitor the health and performance status of your appliances
+          </p>
         </CardHeader>
         <CardContent>
-          {anomaliesError ? (
+          {deviceStatusError ? (
             <div className="text-center py-8 text-destructive">
               <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
-              <p>Failed to load anomalies</p>
-              <p className="text-sm">{anomaliesError.message}</p>
+              <p>Failed to load device status</p>
+              <p className="text-sm">{deviceStatusError.message}</p>
               <Button 
-                onClick={() => refetchAnomalies()} 
+                onClick={() => refetchDeviceStatus()} 
                 variant="outline" 
                 size="sm" 
                 className="mt-2"
-                data-testid="button-retry-anomalies"
+                data-testid="button-retry-device-status"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Retry
               </Button>
             </div>
-          ) : isLoadingAnomalies ? (
+          ) : isLoadingDeviceStatus ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-              <span>Loading anomalies...</span>
+              <span>Loading device status...</span>
             </div>
-          ) : anomalies.length === 0 ? (
+          ) : deviceStatusData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Cpu className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p>No anomalies detected yet.</p>
-              <p className="text-sm">Add some appliance readings to start monitoring.</p>
+              <p>No devices monitored yet.</p>
+              <p className="text-sm">Add some appliance readings to start monitoring device status.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {anomalies.slice(0, 3).map((anomaly) => (
-                <div
-                  key={anomaly.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                  data-testid={`anomaly-item-${anomaly.id}`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      {getSeverityIcon(anomaly.severity)}
-                      <div>
-                        <p className="font-medium">
-                          {anomaly.applianceReading?.applianceName || 'Unknown Appliance'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {anomaly.anomalyType}
-                        </p>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Normal Status Card */}
+              <Card className="border-l-4 border-l-green-500">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Normal Operation</p>
+                      <p className="text-3xl font-bold text-green-600" data-testid="text-normal-count">
+                        {devicesByStatus.normal.length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">devices running smoothly</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">
-                      {anomaly.applianceReading?.powerWatts || 0}W
-                    </span>
-                    <Badge className={getSeverityColor(anomaly.severity)}>
-                      {anomaly.severity}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(anomaly.timestamp).toLocaleString()}
-                    </span>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <span className="text-green-600 font-medium">Optimal</span>
+                    </div>
+                    {devicesByStatus.normal.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground mb-2">Devices:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {devicesByStatus.normal.slice(0, 4).map((device, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-800" data-testid={`device-normal-${index}`}>
+                              {device.name}
+                            </Badge>
+                          ))}
+                          {devicesByStatus.normal.length > 4 && (
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                              +{devicesByStatus.normal.length - 4} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+
+              {/* Warning Status Card */}
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                      <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Needs Attention</p>
+                      <p className="text-3xl font-bold text-yellow-600" data-testid="text-warning-count">
+                        {devicesByStatus.warning.length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">devices need monitoring</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <span className="text-yellow-600 font-medium">Monitor</span>
+                    </div>
+                    {devicesByStatus.warning.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground mb-2">Devices:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {devicesByStatus.warning.slice(0, 4).map((device, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs bg-yellow-100 text-yellow-800" data-testid={`device-warning-${index}`}>
+                              {device.name}
+                            </Badge>
+                          ))}
+                          {devicesByStatus.warning.length > 4 && (
+                            <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                              +{devicesByStatus.warning.length - 4} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Critical Status Card */}
+              <Card className="border-l-4 border-l-red-500">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                      <AlertTriangle className="w-8 h-8 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Critical Issues</p>
+                      <p className="text-3xl font-bold text-red-600" data-testid="text-critical-count">
+                        {devicesByStatus.critical.length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">devices need immediate action</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <span className="text-red-600 font-medium">Urgent</span>
+                    </div>
+                    {devicesByStatus.critical.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground mb-2">Devices:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {devicesByStatus.critical.slice(0, 4).map((device, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs bg-red-100 text-red-800" data-testid={`device-critical-${index}`}>
+                              {device.name}
+                            </Badge>
+                          ))}
+                          {devicesByStatus.critical.length > 4 && (
+                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">
+                              +{devicesByStatus.critical.length - 4} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </CardContent>
