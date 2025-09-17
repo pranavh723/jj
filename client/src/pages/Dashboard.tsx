@@ -128,8 +128,12 @@ export default function Dashboard() {
     isLoading: isLoadingGrid,
     error: gridError 
   } = useQuery<any>({
-    queryKey: ['/api/grid'],
-    enabled: !!user,
+    queryKey: ['/api/grid', currentHousehold],
+    queryFn: async () => {
+      if (!currentHousehold) throw new Error('No household selected');
+      return api.getGridData(currentHousehold);
+    },
+    enabled: !!currentHousehold,
     refetchInterval: 10000, // Refresh every 10 seconds for live grid data
   });
 

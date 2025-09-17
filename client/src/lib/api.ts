@@ -106,6 +106,12 @@ export const api = {
     return response.json();
   },
 
+  // Grid data
+  async getGridData(householdId: string) {
+    const response = await apiRequest(`/api/grid?household_id=${householdId}`);
+    return response.json();
+  },
+
   // Recommendations
   async generateRecommendations(householdId: string) {
     const response = await apiRequest(`/api/recommendations/generate?household_id=${householdId}`, 'POST');
