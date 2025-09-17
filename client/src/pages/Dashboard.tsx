@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EnergyChart } from '@/components/charts/EnergyChart';
 import { RenewableChart } from '@/components/charts/RenewableChart';
+import { RealtimeEnergyChart } from '@/components/charts/RealtimeEnergyChart';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import { WeatherForecast } from '@/components/WeatherForecast';
 import { CommunityLeaderboard } from '@/components/CommunityLeaderboard';
@@ -555,6 +556,29 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* REAL-TIME STOCK MARKET STYLE ENERGY TRADING DASHBOARD */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-r from-background to-background/50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-bold flex items-center space-x-3">
+                <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                <span>🔴 LIVE ENERGY MARKET DASHBOARD</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Real-time energy data streaming every second • Stock market-style visualization for energy trading
+              </p>
+            </div>
+            <Badge variant="destructive" className="animate-bounce">
+              🚀 STREAMING LIVE
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <RealtimeEnergyChart householdId={currentHousehold || undefined} maxDataPoints={120} />
         </CardContent>
       </Card>
 

@@ -5,131 +5,140 @@ import bcrypt from "bcrypt";
 
 export async function seedSampleData() {
   try {
-    console.log("Starting data seeding...");
+    console.log("Starting realistic AI-powered demo data seeding...");
 
-    // Create sample users with hashed passwords
+    // Create realistic Indian demo users with easy login credentials for teachers
     const user1: InsertUser = {
-      email: "baltimore.user1@example.com",
-      passwordHash: await bcrypt.hash("password123", 10),
-      name: "John Smith"
+      email: "demo.rajesh@greengrid.in",
+      passwordHash: await bcrypt.hash("demo123", 10),
+      name: "Rajesh Kumar Sharma"
     };
 
     const user2: InsertUser = {
-      email: "baltimore.user2@example.com", 
-      passwordHash: await bcrypt.hash("password123", 10),
-      name: "Sarah Johnson"
+      email: "demo.priya@greengrid.in", 
+      passwordHash: await bcrypt.hash("demo123", 10),
+      name: "Priya Agarwal"
     };
 
     const createdUser1 = await storage.createUser(user1);
     const createdUser2 = await storage.createUser(user2);
-    console.log("✓ Created users");
+    console.log("✓ Created realistic Indian demo users with credentials:");
 
-    // Create households in Baltimore, MD area (21201) with solar setup
+    // Create realistic Indian households with proper solar installations
     const household1: InsertHousehold = {
       userId: createdUser1.id,
-      name: "Baltimore Smart Home 1",
-      latitude: 39.2904,
-      longitude: -76.6122,
-      pvKw: 5.0, // 5kW solar system
-      tilt: 30,
-      azimuth: 180, // South facing
-      tariffCurrency: "USD",
-      tariffPerKwh: 0.12, // $0.12 per kWh (typical Baltimore rate)
-      co2FactorKgPerKwh: 0.45, // Maryland grid emission factor
-      usePvwatts: true
+      name: "Delhi Smart Solar Villa",
+      latitude: 28.6139, // New Delhi coordinates
+      longitude: 77.2090,
+      pvKw: 7.5, // 7.5kW rooftop solar (common for Indian villas)
+      tilt: 28, // Optimal tilt for Delhi latitude
+      azimuth: 180, // South facing for maximum solar gain
+      tariffCurrency: "INR",
+      tariffPerKwh: 6.50, // ₹6.50 per kWh (typical Delhi BSES rate)
+      co2FactorKgPerKwh: 0.82, // India grid emission factor (coal-heavy)
+      usePvwatts: false
     };
 
     const household2: InsertHousehold = {
       userId: createdUser2.id,
-      name: "Baltimore Smart Home 2", 
-      latitude: 39.2912,
-      longitude: -76.6146,
-      pvKw: 6.5, // 6.5kW solar system
-      tilt: 30,
+      name: "Mumbai Green Apartment", 
+      latitude: 19.0760, // Mumbai coordinates
+      longitude: 72.8777,
+      pvKw: 5.2, // 5.2kW apartment rooftop system
+      tilt: 19, // Optimal for Mumbai latitude
       azimuth: 180,
-      tariffCurrency: "USD",
-      tariffPerKwh: 0.12,
-      co2FactorKgPerKwh: 0.45,
-      usePvwatts: true
+      tariffCurrency: "INR",
+      tariffPerKwh: 7.20, // ₹7.20 per kWh (MSEDCL rate)
+      co2FactorKgPerKwh: 0.82,
+      usePvwatts: false
     };
 
     const createdHousehold1 = await storage.createHousehold(household1);
     const createdHousehold2 = await storage.createHousehold(household2);
     console.log("✓ Created households");
 
-    // Create smart energy devices for household 1 (scheduling focused)
+    // Create realistic Indian smart devices for Delhi household (Villa setup)
     const devices1: InsertDevice[] = [
       {
         householdId: createdHousehold1.id,
-        name: "Smart Water Heater",
-        typicalKwh: 4.5, // 4.5 kWh typical daily usage
-        flexible: true, // Can be scheduled
-        minDurationHours: 2, // Minimum 2 hour runtime
-        earliestHour: 5, // Can start as early as 5 AM
-        latestHour: 23 // Can start as late as 11 PM
-      },
-      {
-        householdId: createdHousehold1.id,
-        name: "Pool Pump",
-        typicalKwh: 3.2,
+        name: "Smart Geyser (150L)",
+        typicalKwh: 5.2, // Indian electric geyser consumption
         flexible: true,
-        minDurationHours: 6, // Pool pump needs 6 hours daily
-        earliestHour: 10,
-        latestHour: 16
+        minDurationHours: 1.5,
+        earliestHour: 5, // Morning bath time
+        latestHour: 22 // Evening usage
       },
       {
         householdId: createdHousehold1.id,
-        name: "Electric Vehicle Charger",
-        typicalKwh: 12.0, // EV charging
+        name: "Split AC (1.5 Ton)",
+        typicalKwh: 12.0, // High summer usage in Delhi heat
+        flexible: false, // Comfort priority in Indian summers
+        minDurationHours: 0.5,
+        earliestHour: 10,
+        latestHour: 4 // Late night cooling
+      },
+      {
+        householdId: createdHousehold1.id,
+        name: "Tata Nexon EV Charger", 
+        typicalKwh: 15.0, // Electric vehicle charging
         flexible: true,
         minDurationHours: 4,
-        earliestHour: 22, // Charge overnight
+        earliestHour: 22,
         latestHour: 6
       },
       {
         householdId: createdHousehold1.id,
-        name: "Dishwasher",
-        typicalKwh: 1.8,
+        name: "IFB Washing Machine",
+        typicalKwh: 2.1, // Front-loading washing machine
         flexible: true,
         minDurationHours: 1.5,
-        earliestHour: 20,
-        latestHour: 3
+        earliestHour: 7,
+        latestHour: 20
       },
       {
         householdId: createdHousehold1.id,
-        name: "Washer/Dryer",
-        typicalKwh: 3.5,
+        name: "Submersible Borewell Pump",
+        typicalKwh: 2.8, // Water pump for Indian homes
         flexible: true,
         minDurationHours: 2,
-        earliestHour: 9,
-        latestHour: 21
+        earliestHour: 5,
+        latestHour: 7 // Early morning water filling
+      },
+      {
+        householdId: createdHousehold1.id,
+        name: "Room Heaters (Winter)",
+        typicalKwh: 3.5, // Delhi winter heating
+        flexible: true,
+        minDurationHours: 2,
+        earliestHour: 18,
+        latestHour: 8
       }
     ];
 
-    // Create devices for household 2
+    // Create realistic Mumbai apartment devices (Compact setup)
     const devices2: InsertDevice[] = [
       {
         householdId: createdHousehold2.id,
-        name: "Heat Pump Water Heater",
-        typicalKwh: 3.8,
+        name: "Instant Electric Geyser (25L)",
+        typicalKwh: 3.1, // Smaller apartment geyser
         flexible: true,
-        minDurationHours: 2.5,
-        earliestHour: 4,
-        latestHour: 22
-      },
-      {
-        householdId: createdHousehold2.id,
-        name: "Air Conditioner",
-        typicalKwh: 8.5, // High summer usage
-        flexible: false, // Comfort priority
-        minDurationHours: 0.5,
+        minDurationHours: 1,
         earliestHour: 6,
         latestHour: 23
       },
       {
         householdId: createdHousehold2.id,
-        name: "Tesla Model Y Charger",
-        typicalKwh: 15.0,
+        name: "Window AC (1 Ton)",
+        typicalKwh: 8.5, // Mumbai humidity requires constant AC
+        flexible: false,
+        minDurationHours: 0.5,
+        earliestHour: 9,
+        latestHour: 6 // Monsoon humidity control
+      },
+      {
+        householdId: createdHousehold2.id,
+        name: "MG ZS EV Charging Point",
+        typicalKwh: 13.5, // Electric vehicle for urban mobility
         flexible: true,
         minDurationHours: 5,
         earliestHour: 23,
@@ -137,30 +146,30 @@ export async function seedSampleData() {
       },
       {
         householdId: createdHousehold2.id,
-        name: "Smart Irrigation",
-        typicalKwh: 1.2,
+        name: "Smart Inverter Microwave",
+        typicalKwh: 1.8, // Heavy microwave usage in apartments
         flexible: true,
-        minDurationHours: 1,
+        minDurationHours: 0.5,
+        earliestHour: 6,
+        latestHour: 23
+      },
+      {
+        householdId: createdHousehold2.id,
+        name: "Tower Water Pump",
+        typicalKwh: 1.8, // Apartment water pump
+        flexible: true,
+        minDurationHours: 1.5,
         earliestHour: 5,
         latestHour: 8
       },
       {
         householdId: createdHousehold2.id,
-        name: "Basement Dehumidifier",
-        typicalKwh: 2.1,
-        flexible: true,
-        minDurationHours: 3,
-        earliestHour: 11,
-        latestHour: 15
-      },
-      {
-        householdId: createdHousehold2.id,
-        name: "Electric Dryer",
-        typicalKwh: 2.8,
-        flexible: true,
-        minDurationHours: 1.5,
-        earliestHour: 10,
-        latestHour: 20
+        name: "Aquaguard RO + UV Purifier",
+        typicalKwh: 0.8, // Water purification system
+        flexible: false, // Always on for safe drinking water
+        minDurationHours: 24,
+        earliestHour: 0,
+        latestHour: 23
       }
     ];
 
@@ -196,10 +205,11 @@ export async function seedSampleData() {
     await storage.createMeterReading(meterReading2);
     console.log("✓ Created meter readings");
 
-    // Generate AI-powered appliance readings for various appliances
+    // Generate AI-powered appliance readings for realistic Indian appliances
     const applianceNames = [
-      "Refrigerator", "Air Conditioner", "Water Heater", "Microwave", 
-      "Washing Machine", "Dishwasher", "Television", "Computer"
+      "Double Door Refrigerator", "Split AC (1.5 Ton)", "Electric Geyser", "Inverter Microwave", 
+      "Front Load Washing Machine", "Smart LED TV (55inch)", "Gaming Laptop", "Ceiling Fan",
+      "Induction Cooktop", "RO Water Purifier", "Stabilizer", "Room Heater"
     ];
 
     // Generate appliance readings for user 1

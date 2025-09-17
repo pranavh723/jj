@@ -42,9 +42,22 @@ export interface RealisticSolarData {
 }
 
 export class AIDataGeneratorService {
-  
+  private apiCallCount = 0;
+  private lastApiCallTime = 0;
+  private readonly maxApiCallsPerMinute = 20; // Conservative rate limiting
+
+  private canMakeApiCall(): boolean {
+    const now = Date.now();
+    if (now - this.lastApiCallTime > 60000) {
+      // Reset counter every minute
+      this.apiCallCount = 0;
+      this.lastApiCallTime = now;
+    }
+    return this.apiCallCount < this.maxApiCallsPerMinute;
+  }
+
   /**
-   * Generate realistic appliance power consumption data using AI
+   * Generate realistic appliance power consumption data using AI with smart fallbacks
    */
   async generateRealisticApplianceData(
     applianceName: string, 
@@ -52,7 +65,14 @@ export class AIDataGeneratorService {
     season: string = "summer",
     householdSize: number = 4
   ): Promise<RealisticApplianceData> {
+    // Use smart fallback system if API quota is exceeded or rate limited
+    if (!this.canMakeApiCall()) {
+      console.log(`Rate limited - using advanced fallback for ${applianceName}`);
+      return this.getAdvancedFallbackApplianceData(applianceName, timeOfDay, season, householdSize);
+    }
+
     try {
+      this.apiCallCount++;
       const prompt = `You are an energy management system generating realistic appliance power consumption data.
 
 Context:
@@ -112,8 +132,8 @@ Respond with JSON in this exact format:
       };
     } catch (error) {
       console.error('Error generating realistic appliance data:', error);
-      // Fallback to basic realistic data if AI fails
-      return this.getFallbackApplianceData(applianceName, timeOfDay);
+      // Fallback to advanced realistic data if AI fails
+      return this.getAdvancedFallbackApplianceData(applianceName, timeOfDay, season, householdSize);
     }
   }
 
@@ -296,6 +316,186 @@ Respond with JSON in this exact format:
       efficiency: 0.8 + Math.random() * 0.1,
       temperature: 25 + Math.random() * 10,
       humidity: 45 + Math.random() * 20
+    };
+  }
+
+  /**
+   * Advanced fallback system with sophisticated Indian appliance modeling
+   */
+  private getAdvancedFallbackApplianceData(
+    applianceName: string, 
+    timeOfDay: number, 
+    season: string = "summer",
+    householdSize: number = 4
+  ): RealisticApplianceData {
+    const name = applianceName.toLowerCase();
+    let baseWatts = 100;
+    let operatingState = "on";
+    let efficiency = 0.85;
+    let temperature = 28;
+    let humidity = 60;
+
+    // Advanced Indian appliance modeling with seasonal and usage patterns
+    if (name.includes('refrigerator') || name.includes('fridge')) {
+      // Double door refrigerators in Indian homes
+      baseWatts = 180 + Math.random() * 40; // 180-220W
+      if (season === 'summer') baseWatts *= 1.3; // Higher load in summer
+      operatingState = Math.random() > 0.3 ? "cooling" : "standby";
+      efficiency = 0.78 + Math.random() * 0.12;
+    } 
+    else if (name.includes('split ac') || name.includes('air conditioner')) {
+      // Split ACs are very common in India
+      const tonnage = name.includes('1.5') ? 1.5 : name.includes('2') ? 2.0 : 1.0;
+      baseWatts = tonnage * 1200; // Base consumption per ton
+      
+      // Heavy AC usage during Indian summer (April-June)
+      if (season === 'summer' && timeOfDay >= 10 && timeOfDay <= 23) {
+        baseWatts += Math.random() * 400; // Variable load based on cooling demand
+        operatingState = "cooling";
+      } else if (timeOfDay >= 22 || timeOfDay <= 6) {
+        baseWatts *= 0.7; // Lower power during night
+        operatingState = "cooling";
+      } else {
+        baseWatts = 50 + Math.random() * 30; // Standby
+        operatingState = "standby";
+      }
+      temperature = 35 + Math.random() * 10; // Ambient temp affects AC
+      efficiency = 0.72 + Math.random() * 0.13;
+    }
+    else if (name.includes('geyser') || name.includes('water heater')) {
+      // Electric geysers are common in North Indian homes
+      const capacity = name.includes('25l') ? 25 : name.includes('150l') ? 150 : 100;
+      baseWatts = capacity * 15 + Math.random() * 300; // Rough calculation
+      
+      // Peak usage during bath times
+      if ((timeOfDay >= 6 && timeOfDay <= 8) || (timeOfDay >= 19 && timeOfDay <= 21)) {
+        operatingState = "heating";
+        baseWatts *= 1.2;
+      } else if (season === 'winter') {
+        baseWatts *= 1.4; // More usage in winter
+        operatingState = "heating";
+      } else {
+        baseWatts *= 0.3; // Standby
+        operatingState = "standby";
+      }
+      efficiency = 0.88 + Math.random() * 0.07;
+    }
+    else if (name.includes('washing machine')) {
+      // Indian washing machine patterns
+      baseWatts = name.includes('front load') ? 500 + Math.random() * 300 : 400 + Math.random() * 200;
+      
+      // Peak usage times in Indian homes
+      if ((timeOfDay >= 7 && timeOfDay <= 10) || (timeOfDay >= 16 && timeOfDay <= 19)) {
+        operatingState = Math.random() > 0.4 ? "washing" : "spinning";
+        baseWatts += Math.random() * 400;
+      } else {
+        baseWatts = 15 + Math.random() * 25; // Standby
+        operatingState = "standby";
+      }
+      efficiency = 0.81 + Math.random() * 0.14;
+    }
+    else if (name.includes('microwave')) {
+      // Microwave usage patterns
+      baseWatts = name.includes('inverter') ? 800 + Math.random() * 200 : 700 + Math.random() * 300;
+      
+      // Meal times in Indian homes
+      if ((timeOfDay >= 7 && timeOfDay <= 9) || (timeOfDay >= 12 && timeOfDay <= 14) || 
+          (timeOfDay >= 19 && timeOfDay <= 21)) {
+        operatingState = "heating";
+      } else {
+        baseWatts = 3 + Math.random() * 8; // Standby with digital display
+        operatingState = "standby";
+      }
+      efficiency = 0.75 + Math.random() * 0.15;
+    }
+    else if (name.includes('tv') || name.includes('television')) {
+      // LED TV consumption
+      const size = name.includes('55') ? 55 : name.includes('43') ? 43 : 32;
+      baseWatts = size * 1.8 + Math.random() * 30;
+      
+      // TV viewing patterns in Indian homes
+      if ((timeOfDay >= 18 && timeOfDay <= 23) || (timeOfDay >= 6 && timeOfDay <= 9)) {
+        operatingState = "playing";
+        baseWatts += Math.random() * 20;
+      } else {
+        baseWatts = 2 + Math.random() * 5; // Standby
+        operatingState = "standby";
+      }
+      efficiency = 0.91 + Math.random() * 0.06;
+    }
+    else if (name.includes('laptop') || name.includes('computer')) {
+      // Gaming/work laptop
+      baseWatts = name.includes('gaming') ? 120 + Math.random() * 80 : 60 + Math.random() * 40;
+      
+      // Usage patterns for work/study
+      if (timeOfDay >= 9 && timeOfDay <= 22) {
+        operatingState = Math.random() > 0.3 ? "active" : "idle";
+        if (operatingState === "active") baseWatts *= 1.3;
+      } else {
+        baseWatts = 3 + Math.random() * 7; // Sleep mode
+        operatingState = "sleep";
+      }
+      efficiency = 0.87 + Math.random() * 0.08;
+    }
+    else if (name.includes('fan')) {
+      // Ceiling fans are essential in Indian homes
+      baseWatts = 75 + Math.random() * 25; // 75-100W
+      
+      if (season === 'summer') {
+        baseWatts *= 1.2; // Higher speed in summer
+        operatingState = "running_high";
+      } else if (season === 'winter') {
+        baseWatts *= 0.6; // Lower speed or off
+        operatingState = Math.random() > 0.5 ? "running_low" : "off";
+      } else {
+        operatingState = "running_medium";
+      }
+      efficiency = 0.84 + Math.random() * 0.10;
+    }
+    else if (name.includes('pump')) {
+      // Water pumps are crucial in Indian homes
+      baseWatts = name.includes('submersible') ? 750 + Math.random() * 500 : 500 + Math.random() * 300;
+      
+      // Water filling times
+      if (timeOfDay >= 5 && timeOfDay <= 8) {
+        operatingState = "pumping";
+      } else if (timeOfDay >= 17 && timeOfDay <= 19) {
+        operatingState = Math.random() > 0.6 ? "pumping" : "off";
+      } else {
+        baseWatts = 0;
+        operatingState = "off";
+      }
+      efficiency = 0.79 + Math.random() * 0.11;
+    }
+
+    // Add realistic variations based on time and household size
+    const householdFactor = householdSize / 4; // Base is 4 people
+    baseWatts *= householdFactor;
+
+    // Add time-based natural variations
+    const timeVariation = 0.85 + Math.sin(timeOfDay * Math.PI / 12) * 0.15;
+    baseWatts *= timeVariation;
+
+    // Seasonal ambient temperature affects all appliances
+    if (season === 'summer') {
+      temperature = 32 + Math.random() * 12; // 32-44°C
+      humidity = 40 + Math.random() * 35;    // 40-75%
+    } else if (season === 'winter') {
+      temperature = 8 + Math.random() * 15;  // 8-23°C  
+      humidity = 25 + Math.random() * 25;    // 25-50%
+    } else { // monsoon
+      temperature = 24 + Math.random() * 8;  // 24-32°C
+      humidity = 70 + Math.random() * 25;    // 70-95%
+    }
+
+    return {
+      applianceName,
+      powerWatts: Math.max(0, Math.round(baseWatts)),
+      timestamp: new Date(),
+      operatingState,
+      efficiency: Math.round(efficiency * 1000) / 1000,
+      temperature: Math.round(temperature * 10) / 10,
+      humidity: Math.round(humidity * 10) / 10
     };
   }
 

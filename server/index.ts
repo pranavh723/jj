@@ -4,8 +4,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express, { type Request, Response, NextFunction } from "express";
+import { WebSocketServer } from 'ws';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { realtimeDataService } from "./services/realtimeData";
 
 const app = express();
 app.use(express.json());
@@ -61,6 +63,9 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // Initialize real-time WebSocket data streaming
+  realtimeDataService.initialize(server);
+
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
@@ -72,5 +77,6 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    log(`🚀 Real-time WebSocket streaming available at ws://localhost:${port}/ws/realtime`);
   });
 })();
