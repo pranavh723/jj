@@ -30,7 +30,33 @@ function getDatabaseUrl(): string {
   );
 }
 
-const DATABASE_URL = getDatabaseUrl();
+// Lazy initialization - only create connection when first accessed
+let _pool: Pool | null = null;
+let _db: any | null = null;
 
-export const pool = new Pool({ connectionString: DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+function getPool() {
+  if (!_pool) {
+    const DATABASE_URL = getDatabaseUrl();
+    _pool = new Pool({ connectionString: DATABASE_URL });
+  }
+  return _pool;
+}
+
+function getDb() {
+  if (!_db) {
+    _db = drizzle({ client: getPool(), schema });
+  }
+  return _db;
+}
+
+export const pool = new Proxy({} as Pool, {
+  get(target, prop) {
+    return (getPool() as any)[prop];
+  }
+});
+
+export const db = new Proxy({} as any, {
+  get(target, prop) {
+    return (getDb() as any)[prop];
+  }
+});
