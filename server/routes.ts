@@ -227,6 +227,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const passwordHash = await authService.hashPassword(password);
       const user = await storage.createUser({ email, passwordHash, name });
       
+      // Automatically create a default household for new users
+      try {
+        const householdData = insertHouseholdSchema.parse({
+          userId: user.id,
+          name: `${name}'s Home`,
+          latitude: 28.6139, // Default to Delhi, India coordinates
+          longitude: 77.2090,
+          pvKw: 0, // User can add solar panels later
+          tariffPerKwh: 5.0, // Default tariff rate in INR
+          tariffCurrency: 'INR',
+          co2FactorKgPerKwh: 0.82, // India grid emission factor
+        });
+        
+        await storage.createHousehold(householdData);
+      } catch (householdError) {
+        // Rollback user creation if household creation fails
+        console.error('Household creation failed during registration:', householdError);
+        try {
+          await storage.deleteUser(user.id);
+        } catch (deleteError) {
+          console.error('Failed to rollback user creation:', deleteError);
+        }
+        return res.status(400).json({ message: 'Registration failed' });
+      }
+      
       // Generate token
       const token = authService.generateToken(user);
       
