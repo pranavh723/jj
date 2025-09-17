@@ -238,6 +238,32 @@ export default function Dashboard() {
     avgRenewableShare: '0%'
   };
 
+  // Show setup prompt if user has no households
+  if (households.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[600px]">
+        <Card className="p-8 text-center max-w-md">
+          <Home className="w-16 h-16 text-primary mx-auto mb-6" />
+          <h2 className="text-2xl font-bold mb-4" data-testid="text-setup-title">Welcome to your Energy Dashboard!</h2>
+          <p className="text-muted-foreground mb-6">
+            To get started, you'll need to set up your first household. This will allow us to track your energy usage and provide personalized recommendations.
+          </p>
+          <div className="space-y-3">
+            <Link href="/household-setup">
+              <Button className="w-full" data-testid="button-setup-household">
+                <Home className="w-4 h-4 mr-2" />
+                Set Up Your First Household
+              </Button>
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Takes less than 2 minutes to complete
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   if (isDashboardLoading) {
     return (
       <div className="space-y-6">
