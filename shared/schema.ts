@@ -111,6 +111,11 @@ export const applianceReadings = pgTable("appliance_readings", {
   applianceName: text("appliance_name").notNull(),
   timestamp: timestamp("timestamp").notNull(),
   powerWatts: real("power_watts").notNull(),
+  // AI-powered realistic fields
+  operatingState: text("operating_state"), // on/off/standby/heating/cooling/etc
+  efficiency: real("efficiency"), // 0.0-1.0 efficiency rating
+  temperature: real("temperature"), // ambient temperature in Celsius
+  humidity: real("humidity"), // relative humidity percentage
 });
 
 export const applianceAnomalies = pgTable("appliance_anomalies", {
@@ -147,6 +152,12 @@ export const batteryLogs = pgTable("battery_logs", {
   dodPercent: real("dod_percent").notNull(), // Depth of Discharge
   cycleCount: integer("cycle_count").notNull(),
   alert: text("alert"), // Warning message if any
+  // AI-powered realistic fields
+  voltage: real("voltage"), // Battery voltage (V)
+  current: real("current"), // Current flow (A, positive=charging, negative=discharging)
+  temperature: real("temperature"), // Battery temperature in Celsius
+  chargingState: text("charging_state"), // charging/discharging/idle/maintenance
+  healthScore: real("health_score"), // 0-100 battery health percentage
 });
 
 // Relations

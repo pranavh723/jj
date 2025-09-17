@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { weatherService } from "../services/weather";
 import { solarService } from "../services/solar";
 import { recommendationService } from "../services/recommendations";
+import { aiDataGenerator } from "../services/aiDataGenerator";
 import { normalizeApplianceName } from "@shared/applianceUtils";
 import type { Household } from "@shared/schema";
 
@@ -42,13 +43,13 @@ export class SchedulerService {
       for (let i = 0; i < Math.min(3, households.length); i++) {
         const randomHousehold = households[Math.floor(Math.random() * households.length)];
         
-        // Generate mock appliance reading data based on actual devices in the household
-        const applianceData = await this.generateMockApplianceData(randomHousehold.id);
+        // Generate realistic AI-powered appliance reading data
+        const applianceData = await this.generateRealisticApplianceData(randomHousehold.id);
         await this.ingestApplianceReading(randomHousehold.userId, applianceData);
         
-        // Generate mock battery data (30% chance)
-        if (Math.random() < 0.3) {
-          const batteryData = await this.generateMockBatteryData();
+        // Generate realistic battery data (50% chance for more data)
+        if (Math.random() < 0.5) {
+          const batteryData = await this.generateRealisticBatteryData();
           await this.ingestBatteryLog(randomHousehold.userId, batteryData);
         }
       }
@@ -146,94 +147,100 @@ export class SchedulerService {
     console.log('Daily notifications would be sent here if Telegram is configured');
   }
 
-  private async generateMockApplianceData(householdId: string): Promise<any> {
+  private async generateRealisticApplianceData(householdId: string): Promise<any> {
     // Get actual devices for this household
     const devices = await storage.getDevicesByHouseholdId(householdId);
+    const currentHour = new Date().getHours();
+    const season = this.getCurrentSeason();
+    
+    let applianceName: string;
     
     if (devices.length === 0) {
-      // Fallback to default appliance names if no devices exist
-      const fallbackApplianceNames = [
+      // Fallback to realistic appliance names based on typical Indian households
+      const realisticAppliances = [
         'Refrigerator', 'Air Conditioner', 'Washing Machine', 'Dishwasher', 
-        'Microwave', 'Water Heater', 'Television', 'Computer', 'LED Lights', 
-        'Ceiling Fan', 'Electric Oven', 'Toaster', 'Coffee Maker', 'Vacuum Cleaner'
+        'Microwave', 'Water Heater', 'Television', 'LED Lights', 
+        'Ceiling Fan', 'Electric Oven', 'Vacuum Cleaner'
       ];
+      applianceName = realisticAppliances[Math.floor(Math.random() * realisticAppliances.length)];
+    } else {
+      // Use actual device from the household
+      const randomDevice = devices[Math.floor(Math.random() * devices.length)];
+      applianceName = randomDevice.name;
+    }
+    
+    // Generate AI-powered realistic data
+    try {
+      const aiData = await aiDataGenerator.generateRealisticApplianceData(
+        applianceName,
+        currentHour,
+        season,
+        4 // typical household size
+      );
       
-      const randomAppliance = fallbackApplianceNames[Math.floor(Math.random() * fallbackApplianceNames.length)];
-      
-      // Different power ranges for different appliances
-      let powerRange;
-      if (randomAppliance === 'Air Conditioner') powerRange = [1200, 2500];
-      else if (randomAppliance === 'Water Heater') powerRange = [2000, 3000];
-      else if (randomAppliance === 'Refrigerator') powerRange = [100, 300];
-      else if (randomAppliance === 'Washing Machine') powerRange = [500, 1500];
-      else if (randomAppliance === 'Microwave') powerRange = [700, 1200];
-      else if (randomAppliance === 'Television') powerRange = [100, 250];
-      else if (randomAppliance === 'LED Lights') powerRange = [10, 50];
-      else powerRange = [50, 800];
-      
-      const powerWatts = Math.round(powerRange[0] + Math.random() * (powerRange[1] - powerRange[0]));
+      console.log(`AI-Generated: ${applianceName} @ ${aiData.powerWatts}W (${aiData.operatingState})`);
       
       return {
-        applianceName: randomAppliance,
-        powerWatts: powerWatts,
-        timestamp: new Date()
+        applianceName: aiData.applianceName,
+        powerWatts: aiData.powerWatts,
+        timestamp: aiData.timestamp,
+        operatingState: aiData.operatingState,
+        efficiency: aiData.efficiency,
+        temperature: aiData.temperature,
+        humidity: aiData.humidity
       };
+    } catch (error) {
+      console.error('Error generating AI appliance data, using fallback:', error);
+      // Fallback to simple realistic data if AI fails
+      return this.getFallbackApplianceData(applianceName, currentHour);
     }
-    
-    // Use actual device from the household
-    const randomDevice = devices[Math.floor(Math.random() * devices.length)];
-    
-    // Generate power consumption based on the device's typical consumption
-    // Convert kWh to watts (assuming 1 hour of operation)
-    const baseWatts = randomDevice.typicalKwh * 1000; // kWh to Wh per hour
-    
-    // Add some realistic variation (±20% from typical consumption)
-    const variation = 0.2;
-    const minWatts = Math.max(1, baseWatts * (1 - variation));
-    const maxWatts = baseWatts * (1 + variation);
-    const powerWatts = Math.round(minWatts + Math.random() * (maxWatts - minWatts));
-    
-    return {
-      applianceName: randomDevice.name,
-      powerWatts: powerWatts,
-      timestamp: new Date()
-    };
   }
 
-  private async generateMockBatteryData(): Promise<any> {
+  private async generateRealisticBatteryData(): Promise<any> {
     const currentHour = new Date().getHours();
+    const weatherCondition = await this.getCurrentWeatherCondition();
+    const solarGeneration = await this.getCurrentSolarGeneration();
     
-    // Simulate daily charge patterns
-    let socPercent, dodPercent;
-    
-    if (currentHour >= 6 && currentHour <= 18) {
-      // Daytime: battery charging from solar
-      socPercent = 60 + Math.random() * 35; // 60-95%
-      dodPercent = Math.max(0, 100 - socPercent - Math.random() * 20); // Lower DoD during charge
-    } else {
-      // Nighttime: battery discharging
-      socPercent = 20 + Math.random() * 60; // 20-80%
-      dodPercent = 30 + Math.random() * 50; // 30-80% higher DoD during discharge
+    try {
+      // Generate AI-powered realistic battery data
+      const aiData = await aiDataGenerator.generateRealisticBatteryData(
+        currentHour,
+        weatherCondition,
+        solarGeneration
+      );
+      
+      console.log(`AI-Battery: SoC ${aiData.socPercent}% | ${aiData.chargingState} @ ${aiData.current}A`);
+      
+      return {
+        socPercent: aiData.socPercent,
+        dodPercent: aiData.dodPercent,
+        cycleCount: aiData.cycleCount,
+        voltage: aiData.voltage,
+        current: aiData.current,
+        temperature: aiData.temperature,
+        timestamp: aiData.timestamp,
+        chargingState: aiData.chargingState,
+        healthScore: aiData.healthScore
+      };
+    } catch (error) {
+      console.error('Error generating AI battery data, using fallback:', error);
+      // Fallback to basic realistic data if AI fails
+      return this.getFallbackBatteryData(currentHour);
     }
-    
-    const cycleCount = Math.floor(100 + Math.random() * 1000); // 100-1100 cycles
-    
-    return {
-      socPercent: Math.round(socPercent * 10) / 10,
-      dodPercent: Math.round(dodPercent * 10) / 10,
-      cycleCount: cycleCount,
-      timestamp: new Date()
-    };
   }
 
   private async ingestApplianceReading(userId: string, applianceData: any): Promise<void> {
     try {
-      // Create appliance reading
+      // Create appliance reading with realistic AI-generated fields
       const reading = await storage.createApplianceReading({
         userId,
         applianceName: applianceData.applianceName,
         powerWatts: applianceData.powerWatts,
-        timestamp: applianceData.timestamp
+        timestamp: applianceData.timestamp,
+        operatingState: applianceData.operatingState,
+        efficiency: applianceData.efficiency,
+        temperature: applianceData.temperature,
+        humidity: applianceData.humidity
       });
 
       // Enhanced anomaly detection with specific power thresholds
@@ -259,7 +266,12 @@ export class SchedulerService {
         socPercent: batteryData.socPercent,
         dodPercent: batteryData.dodPercent,
         cycleCount: batteryData.cycleCount,
-        timestamp: batteryData.timestamp
+        timestamp: batteryData.timestamp,
+        voltage: batteryData.voltage,
+        current: batteryData.current,
+        temperature: batteryData.temperature,
+        chargingState: batteryData.chargingState,
+        healthScore: batteryData.healthScore
       });
       
       console.log(`Auto-ingest: Battery log added - SoC: ${batteryData.socPercent}%, DoD: ${batteryData.dodPercent}%`);
@@ -298,6 +310,98 @@ export class SchedulerService {
     }
     
     return anomalies;
+  }
+
+  // Helper methods for AI data generation
+  private getCurrentSeason(): string {
+    const month = new Date().getMonth() + 1;
+    if (month >= 3 && month <= 5) return "spring";
+    if (month >= 6 && month <= 8) return "monsoon";
+    if (month >= 9 && month <= 11) return "post-monsoon";
+    return "winter";
+  }
+
+  private async getCurrentWeatherCondition(): Promise<string> {
+    // Simple weather simulation based on season and time
+    const season = this.getCurrentSeason();
+    const hour = new Date().getHours();
+    
+    if (season === "monsoon") {
+      return Math.random() < 0.7 ? "cloudy" : "rainy";
+    } else if (season === "winter") {
+      return Math.random() < 0.6 ? "clear" : "foggy";
+    } else {
+      return hour >= 6 && hour <= 18 ? "clear" : "clear";
+    }
+  }
+
+  private async getCurrentSolarGeneration(): Promise<number> {
+    const hour = new Date().getHours();
+    const season = this.getCurrentSeason();
+    
+    if (hour < 6 || hour > 18) return 0;
+    
+    // Simple solar generation simulation
+    const peak = 12;
+    const hoursFromPeak = Math.abs(hour - peak);
+    const factor = Math.max(0, 1 - (hoursFromPeak / 6));
+    
+    const seasonMultiplier = season === "monsoon" ? 0.4 : season === "winter" ? 0.7 : 1.0;
+    return factor * 4.5 * seasonMultiplier * (0.8 + Math.random() * 0.4);
+  }
+
+  private getFallbackApplianceData(applianceName: string, timeOfDay: number): any {
+    let baseWatts = 100;
+    let operatingState = "on";
+    
+    if (applianceName.toLowerCase().includes('refrigerator')) {
+      baseWatts = 150 + Math.random() * 50;
+      operatingState = "cooling";
+    } else if (applianceName.toLowerCase().includes('air conditioner') || applianceName.toLowerCase().includes('ac')) {
+      baseWatts = timeOfDay >= 10 && timeOfDay <= 18 ? 1800 + Math.random() * 700 : 50;
+      operatingState = baseWatts > 100 ? "cooling" : "standby";
+    } else if (applianceName.toLowerCase().includes('washing machine')) {
+      baseWatts = (timeOfDay >= 7 && timeOfDay <= 11) || (timeOfDay >= 18 && timeOfDay <= 22) ? 800 + Math.random() * 400 : 50;
+      operatingState = baseWatts > 100 ? "washing" : "standby";
+    }
+
+    return {
+      applianceName,
+      powerWatts: Math.round(baseWatts),
+      timestamp: new Date(),
+      operatingState,
+      efficiency: 0.8 + Math.random() * 0.1,
+      temperature: 25 + Math.random() * 10,
+      humidity: 45 + Math.random() * 20
+    };
+  }
+
+  private getFallbackBatteryData(currentHour: number): any {
+    let socPercent, current, chargingState;
+    
+    if (currentHour >= 9 && currentHour <= 16) {
+      // Daytime: charging
+      socPercent = 60 + Math.random() * 35;
+      current = 15 + Math.random() * 10;
+      chargingState = "charging";
+    } else {
+      // Evening/night: discharging
+      socPercent = 30 + Math.random() * 50;
+      current = -(5 + Math.random() * 15);
+      chargingState = "discharging";
+    }
+
+    return {
+      socPercent: Math.round(socPercent * 10) / 10,
+      dodPercent: Math.round((100 - socPercent) * 10) / 10,
+      cycleCount: 150 + Math.floor(Math.random() * 500),
+      voltage: 48 + Math.random() * 4,
+      current: Math.round(current * 100) / 100,
+      temperature: 32 + Math.random() * 8,
+      timestamp: new Date(),
+      chargingState,
+      healthScore: 85 + Math.random() * 10
+    };
   }
 
   /**
