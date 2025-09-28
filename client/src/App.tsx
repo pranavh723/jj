@@ -17,6 +17,7 @@ import Battery from "./pages/Battery";
 import Forecasting from "./pages/Forecasting";
 import Community from "./pages/Community";
 import Analytics from "./pages/Analytics";
+import Algorithms from "./pages/Algorithms";
 import NotFound from "./pages/not-found";
 
 function AuthenticatedApp() {
@@ -31,6 +32,7 @@ function AuthenticatedApp() {
         <Route path="/forecasting" component={Forecasting} />
         <Route path="/community" component={Community} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/algorithms" component={Algorithms} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

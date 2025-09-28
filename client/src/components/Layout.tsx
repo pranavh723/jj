@@ -17,7 +17,7 @@ import {
   LogOut,
   Leaf,
   Cpu,
-  TrendingUp,
+  Brain,
   Battery
 } from 'lucide-react';
 
@@ -54,7 +54,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/household-setup', label: 'Household Setup', icon: Settings },
     { path: '/devices', label: 'Devices', icon: Zap },
     { path: '/appliances', label: 'Appliances', icon: Cpu },
-    { path: '/marketplace', label: 'Marketplace', icon: TrendingUp },
+    { path: '/algorithms', label: 'Algorithms', icon: Brain },
     { path: '/battery', label: 'Battery', icon: Battery },
     { path: '/forecasting', label: 'Forecasting', icon: CloudSun },
     { path: '/community', label: 'Community', icon: Users },
