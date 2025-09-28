@@ -421,10 +421,15 @@ export class SchedulerService {
       }
     }, 60 * 1000); // Check every minute
 
-    // Run auto-ingest job every 10 seconds for continuous simulation
-    setInterval(() => {
-      this.runAutoIngestJob().catch(console.error);
-    }, 10 * 1000); // 10 seconds
+    // Delay auto-ingest job startup to allow database connection to be established
+    setTimeout(() => {
+      // Run auto-ingest job every 10 seconds for continuous simulation
+      setInterval(() => {
+        this.runAutoIngestJob().catch(console.error);
+      }, 10 * 1000); // 10 seconds
+      
+      console.log('📈 Real-time data generation started (1-second intervals)');
+    }, 30 * 1000); // Wait 30 seconds before starting auto-ingest
 
     console.log('Scheduler started - hourly weather updates, daily recommendations, and continuous auto-ingest simulation');
   }
